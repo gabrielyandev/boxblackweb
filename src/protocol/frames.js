@@ -161,6 +161,118 @@ export function cmdCommit() {
 }
 
 /**
+ * Split a staged AMP/CAB record into 1015-byte transfer chunks
+ * @param {Uint8Array} recordBytes 
+ * @returns {Array<{offset: number, chunk: Uint8Array}>}
+ */
+export function chunkLibraryRecord(recordBytes) {
+  if (!recordBytes || recordBytes.length === 0) {
+    throw new Error('Registro AMP/CAB vazio.')
+  }
+  const chunks = []
+  const chunkSize = PROTOCOL.LIBRARY_CHUNK_SIZE
+  for (let offset = 0; offset < recordBytes.length; offset += chunkSize) {
+    chunks.push({
+      offset,
+      chunk: recordBytes.subarray(offset, Math.min(recordBytes.length, offset + chunkSize)),
+    })
+  }
+  return chunks
+}
+
+/**
+ * Build frames to stage/audition a 6164-byte CAB record in RAM
+ * @param {Uint8Array} record6164 
+ * @returns {Uint8Array[]}
+ */
+export function cmdStageCabFrames(record6164) {
+  const frames = chunkLibraryRecord(record6164).map(({ offset, chunk }) =>
+    buildFrame(PROTOCOL.MAGIC_WRITE, PROTOCOL.SPACE_STRING, offset, chunk.length, chunk)
+  )
+  frames.push(
+    buildFrame(
+      PROTOCOL.MAGIC_WRITE,
+      PROTOCOL.SPACE_STRING,
+      PROTOCOL.ADDR_LIBRARY_ACTIVATE,
+      1,
+      new Uint8Array([0x02])
+    )
+  )
+  return frames
+}
+
+/**
+ * Build frames to commit staged CAB header and save permanently to slot (0..19)
+ * @param {number} slotIndex0 
+ * @param {Uint8Array} header20Bytes 
+ * @returns {Uint8Array[]}
+ */
+export function cmdSaveCabHeaderFrames(slotIndex0, header20Bytes) {
+  if (slotIndex0 < 0 || slotIndex0 >= 20) {
+    throw new Error('Slot CAB inválido (esperado 0..19).')
+  }
+  if (header20Bytes.length !== 20) {
+    throw new Error('Cabeçalho CAB deve ter 20 bytes.')
+  }
+  return [
+    buildFrame(PROTOCOL.MAGIC_WRITE, PROTOCOL.SPACE_STRING, 0, header20Bytes.length, header20Bytes),
+    buildFrame(
+      PROTOCOL.MAGIC_WRITE,
+      PROTOCOL.SPACE_STRING,
+      (PROTOCOL.ADDR_CAB_COMMIT_BASE + slotIndex0) >>> 0,
+      1,
+      new Uint8Array([0x00])
+    ),
+  ]
+}
+
+/**
+ * Build frames to stage/audition an AMP capture record in RAM
+ * @param {Uint8Array} recordBytes 
+ * @returns {Uint8Array[]}
+ */
+export function cmdStageAmpFrames(recordBytes) {
+  const frames = chunkLibraryRecord(recordBytes).map(({ offset, chunk }) =>
+    buildFrame(PROTOCOL.MAGIC_WRITE, PROTOCOL.SPACE_STRING, offset, chunk.length, chunk)
+  )
+  frames.push(
+    buildFrame(
+      PROTOCOL.MAGIC_WRITE,
+      PROTOCOL.SPACE_STRING,
+      PROTOCOL.ADDR_LIBRARY_ACTIVATE,
+      1,
+      new Uint8Array([0x01])
+    )
+  )
+  return frames
+}
+
+/**
+ * Build frames to upload and commit an AMP capture permanently to slot (0..19)
+ * @param {number} slotIndex0 
+ * @param {Uint8Array} recordBytes 
+ * @returns {Uint8Array[]}
+ */
+export function cmdSaveAmpFrames(slotIndex0, recordBytes) {
+  if (slotIndex0 < 0 || slotIndex0 >= 20) {
+    throw new Error('Slot AMP inválido (esperado 0..19).')
+  }
+  const frames = chunkLibraryRecord(recordBytes).map(({ offset, chunk }) =>
+    buildFrame(PROTOCOL.MAGIC_WRITE, PROTOCOL.SPACE_STRING, offset, chunk.length, chunk)
+  )
+  frames.push(
+    buildFrame(
+      PROTOCOL.MAGIC_WRITE,
+      PROTOCOL.SPACE_STRING,
+      (PROTOCOL.ADDR_AMP_COMMIT_BASE + slotIndex0) >>> 0,
+      1,
+      new Uint8Array([0x00])
+    )
+  )
+  return frames
+}
+
+/**
  * Check if a packet is the compact ACK response
  * @param {Uint8Array} raw 
  * @returns {boolean}

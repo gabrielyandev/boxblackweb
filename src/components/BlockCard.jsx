@@ -18,6 +18,7 @@ export function BlockCard({
   onPasteBlock,
   hasClipboard = false,
   shortcutNumber = null,
+  onOpenImporter = null,
 }) {
   const isEnabled = state?.enabled ?? false
   const modelIndex = state?.modelIndex ?? 0
@@ -116,11 +117,11 @@ export function BlockCard({
       </div>
 
       {/* Model / Capture Selector */}
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 flex items-center gap-1.5">
         <select
           value={modelIndex}
           onChange={(e) => onModelChange(Number(e.target.value))}
-          className="w-full bg-[#060607] text-[#f2efe9] font-semibold text-sm px-3 py-2.5 border-0 focus:outline focus:outline-2 focus:outline-[#d9822b] cursor-pointer truncate"
+          className="flex-1 min-w-0 bg-[#060607] text-[#f2efe9] font-semibold text-sm px-3 py-2.5 border-0 focus:outline focus:outline-2 focus:outline-[#d9822b] cursor-pointer truncate"
         >
           {modelsList.map((m, idx) => (
             <option key={idx} value={idx}>
@@ -128,6 +129,17 @@ export function BlockCard({
             </option>
           ))}
         </select>
+
+        {onOpenImporter && (
+          <button
+            type="button"
+            onClick={() => onOpenImporter(block.key, modelIndex)}
+            className="bg-[#d9822b] hover:bg-[#e8953f] text-[#120902] font-bold text-[11px] uppercase tracking-wider px-2.5 py-2.5 shrink-0 transition"
+            title={`Importar arquivo para ${block.name}`}
+          >
+            IMPORTAR
+          </button>
+        )}
       </div>
 
       {/* 6-Knob Grid */}

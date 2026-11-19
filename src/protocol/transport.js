@@ -1,6 +1,6 @@
 import { BLE_CONFIG, PROTOCOL } from './constants'
 import { sysexWrap, sysexUnwrap } from './codec'
-import { parseFrame } from './frames'
+import { parseFrame, isAck } from './frames'
 
 export class BlackBoxTransport {
   constructor() {
@@ -23,8 +23,10 @@ export class BlackBoxTransport {
     this.onMessageListeners = new Set()
     this.onStatusListeners = new Set()
 
-    // Receive buffer for fragmented responses
+    // Receive buffers for fragmented responses
     this.rxBuffer = []
+    this.midiRxBuffer = []
+    this.ackResolvers = []
   }
 
   notifyStatus(status) {
@@ -110,7 +112,7 @@ export class BlackBoxTransport {
 
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: true })
-      
+
       const inputs = Array.from(this.midiAccess.inputs.values())
       const outputs = Array.from(this.midiAccess.outputs.values())
 
@@ -118,22 +120,37 @@ export class BlackBoxTransport {
         throw new Error('Nenhum dispositivo MIDI encontrado via USB. Verifique se o cabo está conectado.')
       }
 
-      // Try finding one named BlackBox or M-VAVE, otherwise use the first available
       const input = inputs.find(i => /blackbox|m-vave|cuvave/i.test(i.name)) || inputs[0]
       const output = outputs.find(o => /blackbox|m-vave|cuvave/i.test(o.name)) || outputs[0]
 
       this.midiInput = input
       this.midiOutput = output
       this.deviceName = input.name || 'BlackBox (USB MIDI)'
+      this.midiRxBuffer = []
 
       this.midiInput.onmidimessage = (event) => {
         const data = event.data
-        if (data && data.length >= 2 && data[0] === 0xF0 && data[data.length - 1] === 0xF7) {
-          try {
-            const raw = sysexUnwrap(data)
-            this.handleIncomingRaw(raw)
-          } catch (err) {
-            console.error('Erro ao desembrulhar SysEx:', err)
+        if (!data || data.length === 0) return
+
+        for (let i = 0; i < data.length; i++) {
+          const byte = data[i]
+          // Filter MIDI real-time bytes that may interleave SysEx
+          if (byte >= 0xF8 && byte <= 0xFE) continue
+
+          if (byte === 0xF0) {
+            this.midiRxBuffer = [0xF0]
+          } else if (this.midiRxBuffer.length > 0) {
+            this.midiRxBuffer.push(byte)
+            if (byte === 0xF7) {
+              const completeSysEx = new Uint8Array(this.midiRxBuffer)
+              this.midiRxBuffer = []
+              try {
+                const raw = sysexUnwrap(completeSysEx)
+                this.handleIncomingRaw(raw)
+              } catch (err) {
+                console.error('Erro ao desembrulhar SysEx:', err)
+              }
+            }
           }
         }
       }
@@ -169,11 +186,17 @@ export class BlackBoxTransport {
 
     if (this.type === 'ble') {
       if (!this.txChar) throw new Error('Canal BLE TX não inicializado.')
-      // Use writeValueWithoutResponse if available
-      if (this.txChar.writeValueWithoutResponse) {
-        await this.txChar.writeValueWithoutResponse(rawFrame)
-      } else {
-        await this.txChar.writeValue(rawFrame)
+      const mtuChunk = 240
+      for (let offset = 0; offset < rawFrame.length; offset += mtuChunk) {
+        const slice = rawFrame.subarray(offset, Math.min(rawFrame.length, offset + mtuChunk))
+        if (this.txChar.writeValueWithoutResponse) {
+          await this.txChar.writeValueWithoutResponse(slice)
+        } else {
+          await this.txChar.writeValue(slice)
+        }
+        if (offset + mtuChunk < rawFrame.length) {
+          await new Promise(resolve => setTimeout(resolve, 15))
+        }
       }
     } else if (this.type === 'midi') {
       if (!this.midiOutput) throw new Error('Canal MIDI Out não inicializado.')
@@ -183,15 +206,121 @@ export class BlackBoxTransport {
   }
 
   /**
-   * Handle incoming raw bytes from either BLE or SysEx
+   * Send a write frame and wait for the compact 8-byte ACK
+   * @param {Uint8Array} rawFrame 
+   * @param {number} [timeoutMs=3000] 
+   * @returns {Promise<boolean>}
    */
-  handleIncomingRaw(rawBytes) {
-    // If incoming bytes form a frame or are fragmented
-    const parsed = parseFrame(rawBytes)
-    this.notifyMessage({
-      raw: rawBytes,
-      parsed,
+  async sendAndWaitAck(rawFrame, timeoutMs = 3000) {
+    let settled = false
+    let timerId = null
+    let entry = null
+
+    const ackPromise = new Promise((resolve, reject) => {
+      entry = {
+        resolve: () => {
+          if (settled) return
+          settled = true
+          clearTimeout(timerId)
+          resolve(true)
+        },
+        reject: (err) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timerId)
+          reject(err)
+        },
+      }
+      this.ackResolvers.push(entry)
+      timerId = setTimeout(() => {
+        const idx = this.ackResolvers.indexOf(entry)
+        if (idx !== -1) this.ackResolvers.splice(idx, 1)
+        entry.reject(new Error('Timeout aguardando confirmação (ACK) do pedal.'))
+      }, timeoutMs)
     })
+
+    try {
+      await this.sendRaw(rawFrame)
+    } catch (err) {
+      const idx = this.ackResolvers.indexOf(entry)
+      if (idx !== -1) this.ackResolvers.splice(idx, 1)
+      entry.reject(err)
+    }
+
+    return ackPromise
+  }
+
+  /**
+   * Reassemble fragmented raw bytes into complete frames
+   * @param {Uint8Array} chunk 
+   */
+  handleIncomingRaw(chunk) {
+    if (!chunk || chunk.length === 0) return
+
+    for (let i = 0; i < chunk.length; i++) {
+      this.rxBuffer.push(chunk[i])
+    }
+
+    while (this.rxBuffer.length >= 2) {
+      // Align to 0x00, 0x59 magic header
+      if (this.rxBuffer[0] !== 0x00 || this.rxBuffer[1] !== 0x59) {
+        let foundIdx = -1
+        for (let i = 1; i < this.rxBuffer.length - 1; i++) {
+          if (this.rxBuffer[i] === 0x00 && this.rxBuffer[i + 1] === 0x59) {
+            foundIdx = i
+            break
+          }
+        }
+        if (foundIdx === -1) {
+          // Keep trailing 0x00 in case 0x59 is the first byte of the next chunk
+          if (this.rxBuffer[this.rxBuffer.length - 1] === 0x00) {
+            this.rxBuffer = [0x00]
+          } else {
+            this.rxBuffer = []
+          }
+          break
+        }
+        this.rxBuffer.splice(0, foundIdx)
+      }
+
+      if (this.rxBuffer.length < 8) break
+
+      // Check compact 8-byte ACK: 00 59 00 01 00 00 00 FF
+      const candidate8 = this.rxBuffer.slice(0, 8)
+      if (isAck(candidate8)) {
+        const ackBytes = new Uint8Array(this.rxBuffer.splice(0, 8))
+        const pending = this.ackResolvers.shift()
+        if (pending) pending.resolve()
+        this.notifyMessage({
+          raw: ackBytes,
+          parsed: { type: 'ACK' },
+        })
+        continue
+      }
+
+      if (this.rxBuffer.length < PROTOCOL.HEADER_LEN + 1) break
+
+      const lengthField = this.rxBuffer[3] | (this.rxBuffer[4] << 8)
+      const totalFrameLen = lengthField + 7
+
+      if (totalFrameLen < PROTOCOL.HEADER_LEN + 1 || totalFrameLen > 4096) {
+        // Invalid length sync; discard first byte and resync
+        this.rxBuffer.shift()
+        continue
+      }
+
+      if (this.rxBuffer.length < totalFrameLen) {
+        // Wait for remaining fragments
+        break
+      }
+
+      const completeFrame = new Uint8Array(this.rxBuffer.splice(0, totalFrameLen))
+      const parsed = parseFrame(completeFrame)
+      this.notifyMessage({
+        raw: completeFrame,
+        parsed,
+      })
+    }
   }
 
   handleDisconnect(reason = 'Desconectado.') {
@@ -229,6 +358,13 @@ export class BlackBoxTransport {
     this.midiInput = null
     this.midiOutput = null
     this.type = null
+
+    this.rxBuffer = []
+    this.midiRxBuffer = []
+    while (this.ackResolvers.length > 0) {
+      const pending = this.ackResolvers.shift()
+      pending.reject(new Error('Conexão encerrada.'))
+    }
   }
 }
 

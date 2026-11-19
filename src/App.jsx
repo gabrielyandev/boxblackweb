@@ -24,8 +24,13 @@ import {
   cmdWritePatchVolume,
   cmdWriteRouting,
   cmdWriteFlashPreset,
+  cmdStageCabFrames,
+  cmdSaveCabHeaderFrames,
+  cmdStageAmpFrames,
+  cmdSaveAmpFrames,
   serializePreset,
 } from './protocol/frames'
+import { buildCabRecord, buildAmpRecord } from './protocol/captures'
 
 const INITIAL_BLOCKS_STATE = {
   fx: { enabled: true, modelIndex: 0, knobs: [45, 0, 0, 0, 0, 0] },
@@ -74,6 +79,7 @@ export default function App() {
   const [isBackupOpen, setIsBackupOpen] = useState(false)
   const [isCommunityOpen, setIsCommunityOpen] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
+  const [importerTarget, setImporterTarget] = useState(null)
 
   const blockRefs = useRef({})
   const slotDumpResolvers = useRef({})
@@ -136,6 +142,7 @@ export default function App() {
       setTimeout(async () => {
         try {
           await transport.sendRaw(cmdReadAmpNames())
+          await new Promise((r) => setTimeout(r, 180))
           await transport.sendRaw(cmdReadCabNames())
         } catch (e) {
           console.warn('Leitura de nomes de AMP/CAB:', e)
@@ -497,6 +504,113 @@ export default function App() {
     showStatus(`Delay ajustado para ${newBpm} BPM (${quarterMs.toFixed(0)} ms)`)
   }
 
+  // Open AMP / CAB file importer modal
+  const handleOpenImporter = (kind, slotIndex = 0) => {
+    setImporterTarget({ tab: 'import', kind, slot: slotIndex })
+    setIsCommunityOpen(true)
+  }
+
+  // Stage AMP or CAB capture into live RAM for auditioning
+  const handleStageCapture = async ({
+    kind,
+    buffer,
+    slotName,
+    level,
+    mix,
+    ampLevel,
+    gainMax,
+    gainMin,
+    onProgress,
+  }) => {
+    if (!transport.connected) {
+      throw new Error('Conecte a BlackBox antes de enviar arquivos.')
+    }
+
+    let frames
+    if (kind === 'cab') {
+      const record = buildCabRecord(buffer, slotName, level)
+      frames = cmdStageCabFrames(record)
+    } else if (kind === 'amp') {
+      const { deviceBytes } = buildAmpRecord(buffer, slotName, {
+        mix,
+        level: ampLevel,
+        gainMax,
+        gainMin,
+      })
+      frames = cmdStageAmpFrames(deviceBytes)
+    } else {
+      throw new Error('Tipo de arquivo não suportado para envio ao pedal.')
+    }
+
+    for (let i = 0; i < frames.length; i++) {
+      if (onProgress) onProgress(i + 1, frames.length)
+      await transport.sendAndWaitAck(frames[i], 3500)
+    }
+    showStatus(`${kind.toUpperCase()} "${slotName}" carregado na RAM temporária`)
+  }
+
+  // Save AMP or CAB capture permanently into Flash slot (0..19)
+  const handleSaveCapture = async ({
+    kind,
+    slotIndex0,
+    buffer,
+    slotName,
+    level,
+    mix,
+    ampLevel,
+    gainMax,
+    gainMin,
+    onProgress,
+  }) => {
+    if (!transport.connected) {
+      throw new Error('Conecte a BlackBox antes de gravar no slot.')
+    }
+
+    if (kind === 'cab') {
+      const record = buildCabRecord(buffer, slotName, level)
+      const stageFrames = cmdStageCabFrames(record)
+      const saveFrames = cmdSaveCabHeaderFrames(slotIndex0, record.subarray(0, 20))
+      const total = stageFrames.length + saveFrames.length
+
+      for (let i = 0; i < stageFrames.length; i++) {
+        if (onProgress) onProgress(i + 1, total)
+        await transport.sendAndWaitAck(stageFrames[i], 3500)
+      }
+      await new Promise((r) => setTimeout(r, 400))
+      for (let i = 0; i < saveFrames.length; i++) {
+        if (onProgress) onProgress(stageFrames.length + i + 1, total)
+        await transport.sendAndWaitAck(saveFrames[i], 4000)
+      }
+      await new Promise((r) => setTimeout(r, 300))
+      await transport.sendRaw(cmdReadCabNames())
+    } else if (kind === 'amp') {
+      const { deviceBytes } = buildAmpRecord(buffer, slotName, {
+        mix,
+        level: ampLevel,
+        gainMax,
+        gainMin,
+      })
+      const frames = cmdSaveAmpFrames(slotIndex0, deviceBytes)
+      for (let i = 0; i < frames.length; i++) {
+        if (onProgress) onProgress(i + 1, frames.length)
+        const isCommitFrame = i === frames.length - 1
+        try {
+          await transport.sendAndWaitAck(frames[i], isCommitFrame ? 5000 : 3500)
+        } catch (err) {
+          if (!isCommitFrame) throw err
+        }
+      }
+      await new Promise((r) => setTimeout(r, 400))
+      await transport.sendRaw(cmdReadAmpNames())
+    } else {
+      throw new Error('Tipo de arquivo não suportado para gravação em slot.')
+    }
+
+    showStatus(
+      `${kind.toUpperCase()} "${slotName}" gravado no slot #${String(slotIndex0 + 1).padStart(2, '0')}`
+    )
+  }
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -560,7 +674,10 @@ export default function App() {
         onOpenTuner={() => setIsTunerOpen(true)}
         onOpenTapTempo={() => setIsTapTempoOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
-        onOpenCommunity={() => setIsCommunityOpen(true)}
+        onOpenCommunity={() => {
+          setImporterTarget({ tab: 'explore' })
+          setIsCommunityOpen(true)
+        }}
         onOpenSupport={() => setIsSupportOpen(true)}
       />
 
@@ -621,6 +738,11 @@ export default function App() {
                   onPasteBlock={handlePasteBlock}
                   hasClipboard={Boolean(clipboardBlock)}
                   shortcutNumber={blockShortcutMap[block.key]}
+                  onOpenImporter={
+                    block.key === 'amp' || block.key === 'cab'
+                      ? handleOpenImporter
+                      : null
+                  }
                 />
               </div>
             )
@@ -695,6 +817,10 @@ export default function App() {
         onClose={() => setIsCommunityOpen(false)}
         ampNames={ampNames}
         cabNames={cabNames}
+        isConnected={connectionState.state === 'connected'}
+        initialTarget={importerTarget}
+        onStageCapture={handleStageCapture}
+        onSaveCapture={handleSaveCapture}
       />
       <SupportModal
         isOpen={isSupportOpen}
