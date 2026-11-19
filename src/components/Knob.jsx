@@ -1,5 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react'
 
+function polarToCartesian(cx, cy, r, angleFromTop) {
+  const rad = ((angleFromTop - 90) * Math.PI) / 180
+  return {
+    x: cx + r * Math.cos(rad),
+    y: cy + r * Math.sin(rad),
+  }
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, startAngle)
+  const end = polarToCartesian(cx, cy, r, endAngle)
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1'
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
+}
+
+const TRACK_ARC = describeArc(28, 28, 22, -135, 135)
+
 export function Knob({
   label,
   value = 50,
@@ -7,7 +24,7 @@ export function Knob({
   max = 100,
   step = 1,
   onChange,
-  color = '#e67e22',
+  color = '#e3b862',
   unit = '',
   disabled = false,
   size = 'md', // 'sm' | 'md' | 'lg'
@@ -30,8 +47,9 @@ export function Knob({
     }
   }, [isEditing])
 
-  // Map 0..100 to -135deg .. +135deg
-  const angle = ((value - min) / (max - min)) * 270 - 135
+  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)))
+  const angle = ratio * 270 - 135
+  const valueArc = angle > -134 ? describeArc(28, 28, 22, -135, angle) : null
 
   const updateValueFromDelta = (deltaY) => {
     const range = max - min
@@ -43,7 +61,6 @@ export function Knob({
     }
   }
 
-  // Mouse handlers
   const handleMouseDown = (e) => {
     if (disabled || isEditing) return
     setIsDragging(true)
@@ -51,8 +68,7 @@ export function Knob({
     startValRef.current = value
 
     const handleMouseMove = (moveEvent) => {
-      const deltaY = startYRef.current - moveEvent.clientY
-      updateValueFromDelta(deltaY)
+      updateValueFromDelta(startYRef.current - moveEvent.clientY)
     }
 
     const handleMouseUp = () => {
@@ -65,7 +81,6 @@ export function Knob({
     window.addEventListener('mouseup', handleMouseUp)
   }
 
-  // Touch handlers for mobile
   const handleTouchStart = (e) => {
     if (disabled || isEditing || e.touches.length !== 1) return
     setIsDragging(true)
@@ -74,9 +89,8 @@ export function Knob({
 
     const handleTouchMove = (moveEvent) => {
       if (moveEvent.touches.length !== 1) return
-      moveEvent.preventDefault() // prevent page scroll while dragging knob
-      const deltaY = startYRef.current - moveEvent.touches[0].clientY
-      updateValueFromDelta(deltaY)
+      moveEvent.preventDefault()
+      updateValueFromDelta(startYRef.current - moveEvent.touches[0].clientY)
     }
 
     const handleTouchEnd = () => {
@@ -119,19 +133,19 @@ export function Knob({
     }
   }
 
-  const sizeClasses = {
-    sm: 'w-9 h-9',
-    md: 'w-11 h-11 sm:w-12 sm:h-12',
-    lg: 'w-13 h-13 sm:w-14 sm:h-14',
-  }[size] || 'w-11 h-11'
+  const sizeClass = {
+    sm: 'w-10 h-10',
+    md: 'w-12 h-12 sm:w-14 sm:h-14',
+    lg: 'w-14 h-14 sm:w-16 sm:h-16',
+  }[size] || 'w-12 h-12 sm:w-14 sm:h-14'
 
   return (
     <div
-      className={`flex flex-col items-center gap-1 select-none ${
-        disabled ? 'opacity-35 pointer-events-none' : ''
+      className={`flex flex-col items-center gap-0.5 select-none ${
+        disabled ? 'opacity-40 pointer-events-none' : ''
       }`}
     >
-      <span className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase truncate max-w-[72px]">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#a9c0bc] truncate max-w-[78px]">
         {label}
       </span>
 
@@ -140,32 +154,47 @@ export function Knob({
         onTouchStart={handleTouchStart}
         onWheel={handleWheel}
         onDoubleClick={() => !disabled && setIsEditing(true)}
-        className={`relative ${sizeClasses} rounded-full cursor-ns-resize touch-none flex items-center justify-center transition-transform ${
-          isDragging ? 'scale-105' : 'hover:scale-[1.03]'
+        className={`${sizeClass} cursor-ns-resize touch-none transition-transform ${
+          isDragging ? 'scale-105' : ''
         }`}
-        style={{
-          background: 'radial-gradient(circle at 40% 40%, #262930 0%, #121418 100%)',
-          boxShadow: '0 3px 6px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.15), inset 0 -2px 3px rgba(0,0,0,0.9)',
-          border: '1px solid #2e333d'
-        }}
-        title={`${label}: ${value}${unit} (Arraste ou toque para ajustar)`}
+        title={`${label}: ${value}${unit}`}
       >
-        {/* Subtle rotary pointer line */}
-        <div
-          className="absolute w-full h-full flex justify-center items-start pt-1 pointer-events-none transition-transform duration-75"
-          style={{ transform: `rotate(${angle}deg)` }}
-        >
-          <div
-            className="w-0.5 h-2.5 rounded-full"
+        <svg viewBox="0 0 56 56" className="w-full h-full overflow-visible">
+          {/* Outer well */}
+          <circle cx="28" cy="28" r="24" fill="#061112" />
+          {/* Background track arc */}
+          <path
+            d={TRACK_ARC}
+            fill="none"
+            stroke="#133332"
+            strokeWidth="3.5"
+            strokeLinecap="butt"
+          />
+          {/* Active value arc */}
+          {valueArc && (
+            <path
+              d={valueArc}
+              fill="none"
+              stroke={disabled ? '#3d5654' : color}
+              strokeWidth="3.5"
+              strokeLinecap="butt"
+            />
+          )}
+          {/* Concentric flat hardware cap */}
+          <circle cx="28" cy="28" r="18" fill="#15181b" />
+          <circle cx="28" cy="28" r="14" fill="#202429" />
+          {/* Crisp pointer */}
+          <path
+            d="M28 28V14"
+            stroke="#eef1f2"
+            strokeWidth="2.4"
+            strokeLinecap="round"
             style={{
-              backgroundColor: color,
-              boxShadow: `0 0 5px ${color}`
+              transformOrigin: '28px 28px',
+              transform: `rotate(${angle}deg)`,
             }}
           />
-        </div>
-
-        {/* Center metallic cap */}
-        <div className="w-4 h-4 rounded-full bg-[#181a1f] shadow-inner border border-neutral-700/60" />
+        </svg>
       </div>
 
       {isEditing ? (
@@ -176,12 +205,12 @@ export function Knob({
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleCommitEdit}
           onKeyDown={handleKeyDown}
-          className="w-11 text-center text-[10px] font-mono font-bold bg-neutral-900 text-amber-400 border border-amber-500 rounded px-0.5 py-0.5 outline-none"
+          className="w-12 text-center font-display text-lg bg-[#050f10] text-[#e3b862] outline outline-2 outline-[#e3b862] px-1 py-0"
         />
       ) : (
         <span
           onClick={() => !disabled && setIsEditing(true)}
-          className="text-[10px] font-mono font-bold text-neutral-300 bg-neutral-900/90 hover:bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-800 cursor-text"
+          className="font-display text-lg text-[#eaf0ea] tabular-nums cursor-text hover:text-[#e3b862] leading-none pt-0.5"
         >
           {value}{unit}
         </span>

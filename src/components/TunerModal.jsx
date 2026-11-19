@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Mic, MicOff, Volume2 } from 'lucide-react'
 
 const NOTE_STRINGS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -16,7 +15,6 @@ function centsOffFromPitch(frequency, note) {
   return Math.floor((1200 * Math.log(frequency / frequencyFromNoteNumber(note))) / Math.log(2))
 }
 
-// Auto-correlation pitch detection algorithm
 function autoCorrelate(buf, sampleRate) {
   const SIZE = buf.length
   let rms = 0
@@ -26,7 +24,7 @@ function autoCorrelate(buf, sampleRate) {
     rms += val * val
   }
   rms = Math.sqrt(rms / SIZE)
-  if (rms < 0.015) return -1 // signal too quiet
+  if (rms < 0.015) return -1
 
   let r1 = 0
   let r2 = SIZE - 1
@@ -64,7 +62,6 @@ function autoCorrelate(buf, sampleRate) {
   }
   let T0 = maxpos
 
-  // Parabolic interpolation for fine frequency accuracy
   const x1 = c[T0 - 1]
   const x2 = c[T0]
   const x3 = c[T0 + 1]
@@ -136,7 +133,7 @@ export function TunerModal({ isOpen, onClose }) {
 
       updatePitch()
     } catch (err) {
-      setErrorMsg('Acesso ao microfone/áudio negado ou indisponível.')
+      setErrorMsg('Acesso ao áudio indisponível.')
       setIsListening(false)
     }
   }
@@ -169,106 +166,88 @@ export function TunerModal({ isOpen, onClose }) {
   if (!isOpen) return null
 
   const isTuned = Math.abs(cents) <= 3 && noteName !== '--'
-  const needleRotation = Math.max(-45, Math.min(45, cents * 0.9))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-[#14161a] border border-neutral-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative flex flex-col items-center">
-        {/* Close Button */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
+      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-md p-6 relative flex flex-col items-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition"
         >
-          <X size={18} />
+          ✕
         </button>
 
-        {/* Title */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-          <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-200">
-            Afinador Cromático
-          </h2>
-        </div>
+        <h2 className="font-display text-3xl text-[#eaf0ea] mb-6 self-start">
+          AFINADOR
+        </h2>
 
         {errorMsg ? (
-          <div className="p-4 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs text-center my-4">
+          <div className="w-full p-4 bg-[#050f10] text-[#e5484d] text-sm font-semibold text-center my-4">
             {errorMsg}
           </div>
         ) : (
-          <>
-            {/* Note Display */}
-            <div className="my-2 flex flex-col items-center">
-              <div
-                className={`text-6xl font-black font-mono tracking-tight transition-colors duration-150 ${
-                  isTuned
-                    ? 'text-green-400 drop-shadow-[0_0_15px_#2ecc71]'
-                    : noteName !== '--'
-                    ? 'text-white'
-                    : 'text-neutral-600'
-                }`}
-              >
-                {noteName}
-              </div>
-              <div className="text-xs font-mono text-neutral-400 mt-1">
-                {pitch > 0 ? `${pitch.toFixed(1)} Hz` : 'Toque uma corda'}
-              </div>
+          <div className="w-full bg-[#05080a] p-6 flex flex-col items-center">
+            <div
+              className={`font-display text-7xl tracking-tight leading-none transition-colors ${
+                isTuned
+                  ? 'text-[#63e0f5]'
+                  : noteName !== '--'
+                  ? 'text-[#eaf0ea]'
+                  : 'text-[#3d5654]'
+              }`}
+            >
+              {noteName}
+            </div>
+            <div className="text-xs font-semibold text-[#a9c0bc] mt-2 tabular-nums">
+              {pitch > 0 ? `${pitch.toFixed(1)} HZ` : 'AGUARDANDO SINAL'}
             </div>
 
-            {/* Needle Gauge */}
-            <div className="w-full relative h-24 flex flex-col items-center justify-end mt-4">
-              <div className="w-full flex justify-between text-[10px] font-mono text-neutral-500 px-8 mb-2">
+            {/* Flat horizontal gauge */}
+            <div className="w-full mt-6">
+              <div className="flex justify-between text-[11px] font-semibold text-[#6f8a87] mb-2 tabular-nums">
                 <span>-50</span>
-                <span>-25</span>
-                <span className="text-neutral-300 font-bold">0</span>
-                <span>+25</span>
+                <span>0</span>
                 <span>+50</span>
               </div>
 
-              {/* Arc baseline */}
-              <div className="w-48 h-1 bg-neutral-800 rounded-full relative overflow-visible">
-                {/* Center marker */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-3 bg-neutral-600 rounded" />
-                {/* Needle indicator */}
+              <div className="w-full h-2 bg-[#133332] relative">
+                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-[#2aa3a6]" />
                 <div
-                  className={`absolute top-1/2 left-1/2 -translate-y-1/2 w-3 h-3 rounded-full -ml-1.5 transition-all duration-100 ${
-                    isTuned ? 'bg-green-400 shadow-[0_0_8px_#2ecc71]' : 'bg-amber-400'
+                  className={`absolute top-1/2 -translate-y-1/2 w-3 h-4 -ml-1.5 transition-all duration-75 ${
+                    isTuned ? 'bg-[#63e0f5]' : 'bg-[#e3b862]'
                   }`}
                   style={{
-                    left: `${50 + (cents / 50) * 45}%`,
+                    left: `${Math.max(4, Math.min(96, 50 + (cents / 50) * 46))}%`,
                   }}
                 />
               </div>
 
-              {/* Cents read */}
-              <div className="mt-4 text-xs font-mono font-bold">
+              <div className="mt-4 text-center font-display text-xl tabular-nums">
                 {noteName !== '--' ? (
-                  <span className={isTuned ? 'text-green-400' : 'text-neutral-300'}>
-                    {cents > 0 ? `+${cents}` : cents} cents
+                  <span className={isTuned ? 'text-[#63e0f5]' : 'text-[#eaf0ea]'}>
+                    {cents > 0 ? `+${cents}` : cents} CENTS
                   </span>
                 ) : (
-                  <span className="text-neutral-600">Aguardando sinal...</span>
+                  <span className="text-[#3d5654]">--</span>
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* Footer controls */}
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-5 w-full flex justify-end">
           <button
             onClick={isListening ? stopTuner : startTuner}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition shadow ${
+            className={`px-5 h-11 text-xs font-bold uppercase tracking-wider transition ${
               isListening
-                ? 'bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-750'
-                : 'bg-amber-600 border-amber-500 text-black hover:bg-amber-500'
+                ? 'bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea]'
+                : 'bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06]'
             }`}
           >
-            {isListening ? <MicOff size={14} /> : <Mic size={14} />}
-            <span>{isListening ? 'Pausar' : 'Ouvir Microfone'}</span>
+            {isListening ? 'PAUSAR' : 'ATIVAR ÁUDIO'}
           </button>
         </div>
       </div>
     </div>
   )
 }
-

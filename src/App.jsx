@@ -546,8 +546,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0c0f] text-neutral-100 selection:bg-amber-500 selection:text-black">
-      {/* Sleek Top Rack Header */}
+    <div className="min-h-screen flex flex-col bg-[#071819] text-[#eaf0ea] selection:bg-[#e3b862] selection:text-[#231a06]">
+      {/* Top Rack Header */}
       <Header
         connectionState={connectionState}
         onConnectBLE={handleConnectBLE}
@@ -562,7 +562,7 @@ export default function App() {
       />
 
       {/* Main Workspace */}
-      <main className="max-w-7xl mx-auto w-full p-3 sm:p-4 flex-1 flex flex-col gap-3">
+      <main className="max-w-7xl mx-auto w-full p-2.5 sm:p-4 flex-1 flex flex-col gap-3">
         {/* Preset Management Strip */}
         <PresetBar
           currentPresetId={currentPresetId}
@@ -581,16 +581,19 @@ export default function App() {
           onRenamePreset={handleRenamePreset}
         />
 
-        {/* Live Audio Signal Chain */}
+        {/* Interactive Audio Signal Chain */}
         <SignalChain
           routing={routing}
           blocksState={blocksState}
           onBlockClick={scrollToBlock}
           onToggleBlock={handleToggle}
+          onMoveBlock={handleMoveBlock}
+          ampNames={ampNames}
+          cabNames={cabNames}
         />
 
-        {/* Dynamic Effect Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 my-1">
+        {/* Effect Modules Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 my-1">
           {routing.map((blockId, index) => {
             const block = BLOCKS.find((b) => b.id === blockId)
             if (!block) return null
@@ -622,24 +625,28 @@ export default function App() {
         </div>
       </main>
 
-      {/* Hardware Studio Bottom Status Bar */}
-      <footer className="bg-[#0e1014] border-t border-neutral-800/80 px-4 py-2 flex items-center justify-between text-[11px] font-mono select-none">
-        <div className="flex items-center gap-2">
+      {/* Bottom Status Strip */}
+      <footer className="bg-[#050f10] px-4 py-2 flex items-center justify-between text-xs select-none">
+        <div className="flex items-center gap-2.5">
           <span
-            className={`w-2 h-2 rounded-full ${
-              connectionState.state === 'connected' ? 'bg-emerald-400' : 'bg-neutral-600'
+            className={`w-2.5 h-2.5 rounded-full ${
+              connectionState.state === 'connected' ? 'bg-[#63e0f5]' : 'bg-[#3d5654]'
             }`}
           />
-          <span className="text-neutral-300">{statusMessage}</span>
+          <span className="font-semibold text-[#a9c0bc] uppercase tracking-wider text-[11px]">
+            {statusMessage}
+          </span>
         </div>
 
-        <div className="flex items-center gap-4 text-neutral-500">
-          <span className="hidden sm:inline">M-VAVE ANN BLACKBOX • FW V23</span>
+        <div className="flex items-center gap-4 text-[#a9c0bc]">
+          <span className="hidden sm:inline font-display text-base tracking-wider">
+            BLACKBOX · FW V23
+          </span>
           <button
             onClick={() => setIsShortcutsOpen(true)}
-            className="hover:text-neutral-300 transition"
+            className="font-semibold text-[11px] uppercase tracking-wider hover:text-[#e3b862] transition"
           >
-            Atalhos [?]
+            ATALHOS
           </button>
         </div>
       </footer>

@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react'
-import { X, Download, Upload, HardDrive, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 
 export function BackupModal({
   isOpen,
@@ -7,7 +6,6 @@ export function BackupModal({
   isConnected,
   onStartFullBackup,
   onRestoreBackup,
-  presetNames = {},
 }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -18,22 +16,22 @@ export function BackupModal({
 
   const handleFullBackup = async () => {
     if (!isConnected) {
-      alert('Conecte a BlackBox via Bluetooth ou USB para realizar o backup completo.')
+      alert('Conecte a BlackBox antes de iniciar o backup.')
       return
     }
 
     setIsProcessing(true)
     setProgress(0)
-    setStatusText('Iniciando leitura dos 80 presets da memória Flash...')
+    setStatusText('LENDO 80 SLOTS...')
 
     try {
       await onStartFullBackup((curr, total) => {
         setProgress(Math.round((curr / total) * 100))
-        setStatusText(`Lendo preset ${curr} de ${total}...`)
+        setStatusText(`PRESET ${curr} / ${total}`)
       })
-      setStatusText('Backup concluído com sucesso!')
+      setStatusText('CONCLUÍDO')
     } catch (err) {
-      alert('Falha ao realizar backup completo: ' + err.message)
+      alert('Falha no backup: ' + err.message)
       setStatusText('')
     } finally {
       setIsProcessing(false)
@@ -49,21 +47,20 @@ export function BackupModal({
       try {
         const json = JSON.parse(event.target.result)
         if (!json.presets && !Array.isArray(json)) {
-          throw new Error('Formato de arquivo de backup inválido.')
+          throw new Error('Arquivo inválido.')
         }
 
-        if (confirm(`Deseja restaurar o backup contendo ${(json.presets || json).length} presets?`)) {
+        if (confirm(`Restaurar ${(json.presets || json).length} presets na Flash?`)) {
           setIsProcessing(true)
-          setStatusText('Restaurando presets...')
+          setStatusText('GRAVANDO...')
           await onRestoreBackup(json, (curr, total) => {
             setProgress(Math.round((curr / total) * 100))
-            setStatusText(`Gravando preset ${curr} de ${total}...`)
+            setStatusText(`PRESET ${curr} / ${total}`)
           })
-          alert('Backup restaurado com sucesso!')
           onClose()
         }
       } catch (err) {
-        alert('Erro ao carregar arquivo de backup: ' + err.message)
+        alert('Erro ao carregar backup: ' + err.message)
       } finally {
         setIsProcessing(false)
         setProgress(0)
@@ -75,77 +72,65 @@ export function BackupModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-[#14161a] border border-neutral-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
+      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-lg p-6 relative">
         <button
           onClick={onClose}
           disabled={isProcessing}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition disabled:opacity-30"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition disabled:opacity-30"
         >
-          <X size={18} />
+          ✕
         </button>
 
-        <div className="flex items-center gap-2 mb-4">
-          <HardDrive size={18} className="text-amber-500" />
-          <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-200">
-            Backup & Restauração Completa (80 Presets)
-          </h2>
-        </div>
-
-        <p className="text-xs text-neutral-400 mb-6">
-          Exporte uma cópia completa de toda a pedaleira (P01 a P80) em um único arquivo de segurança ou restaure um backup existente.
-        </p>
+        <h2 className="font-display text-3xl text-[#eaf0ea] mb-5">
+          BACKUP & RESTAURAÇÃO · 80 SLOTS
+        </h2>
 
         {isProcessing ? (
-          <div className="my-6 p-6 bg-neutral-900 border border-neutral-800 rounded-xl flex flex-col items-center gap-3">
-            <Loader2 className="animate-spin text-amber-500" size={28} />
-            <span className="text-xs font-mono font-bold text-neutral-200">{statusText}</span>
-            <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden mt-2">
+          <div className="my-4 p-6 bg-[#05080a] flex flex-col items-center gap-3">
+            <span className="font-display text-2xl text-[#63e0f5]">{statusText}</span>
+            <div className="w-full bg-[#133332] h-3">
               <div
-                className="bg-gradient-to-r from-amber-600 to-amber-400 h-full transition-all duration-200"
+                className="bg-[#e3b862] h-full transition-all duration-150"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-[10px] font-mono text-neutral-400">{progress}%</span>
+            <span className="font-display text-xl text-[#eaf0ea] tabular-nums">{progress}%</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Backup Button */}
-            <div className="bg-neutral-900/80 border border-neutral-800 rounded-xl p-4 flex flex-col justify-between gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-[#133332] p-4 flex flex-col justify-between gap-4">
               <div>
-                <h3 className="text-xs font-bold text-neutral-200 flex items-center gap-1.5 mb-1">
-                  <Download size={14} className="text-amber-500" />
-                  Criar Backup
+                <h3 className="font-display text-2xl text-[#eaf0ea] mb-1">
+                  EXPORTAR TUDO
                 </h3>
-                <p className="text-[11px] text-neutral-400">
-                  Lê todos os 80 slots da Flash e salva em arquivo .json.
+                <p className="text-xs text-[#a9c0bc]">
+                  Dump completo P01–P80 em arquivo JSON.
                 </p>
               </div>
               <button
                 onClick={handleFullBackup}
                 disabled={!isConnected}
-                className="w-full py-2 px-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold transition disabled:opacity-30"
+                className="w-full h-11 bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06] font-bold text-xs uppercase tracking-wider transition disabled:opacity-35"
               >
-                Iniciar Backup Total
+                BAIXAR BACKUP
               </button>
             </div>
 
-            {/* Restore Button */}
-            <div className="bg-neutral-900/80 border border-neutral-800 rounded-xl p-4 flex flex-col justify-between gap-3">
+            <div className="bg-[#133332] p-4 flex flex-col justify-between gap-4">
               <div>
-                <h3 className="text-xs font-bold text-neutral-200 flex items-center gap-1.5 mb-1">
-                  <Upload size={14} className="text-blue-400" />
-                  Restaurar Backup
+                <h3 className="font-display text-2xl text-[#eaf0ea] mb-1">
+                  RESTAURAR JSON
                 </h3>
-                <p className="text-[11px] text-neutral-400">
-                  Carrega um arquivo .json e grava os presets na pedaleira.
+                <p className="text-xs text-[#a9c0bc]">
+                  Grava os 80 slots direto na memória Flash.
                 </p>
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-2 px-3 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-bold transition"
+                className="w-full h-11 bg-[#071819] hover:bg-[#050f10] text-[#63e0f5] font-bold text-xs uppercase tracking-wider transition"
               >
-                Selecionar Arquivo .JSON
+                SELECIONAR ARQUIVO
               </button>
               <input
                 ref={fileInputRef}
@@ -157,13 +142,7 @@ export function BackupModal({
             </div>
           </div>
         )}
-
-        <div className="mt-6 pt-4 border-t border-neutral-800/80 flex items-center gap-2 text-[11px] text-neutral-500">
-          <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-          <span>Compatível com firmware M-VAVE BlackBox v23 e versões anteriores.</span>
-        </div>
       </div>
     </div>
   )
 }
-

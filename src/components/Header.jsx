@@ -1,6 +1,5 @@
 import React from 'react'
 import { Knob } from './Knob'
-import { Bluetooth, Cable, Unplug, Mic, Activity, Keyboard, Radio, Compass } from 'lucide-react'
 
 export function Header({
   connectionState,
@@ -18,127 +17,118 @@ export function Header({
   const isConnecting = connectionState.state === 'connecting'
 
   return (
-    <header className="bg-[#101215] border-b border-neutral-800/90 px-4 py-2.5 shadow-xl select-none">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Brand & Hardware status */}
+    <header className="bg-[#071819] sticky top-0 z-40 select-none">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        {/* Wordmark */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-md shadow-amber-600/20 border border-amber-400/40">
-            <Radio className="text-black" size={17} />
+          <div className="font-display text-3xl sm:text-4xl tracking-tight text-[#eaf0ea]">
+            BLACK<span className="text-[#63e0f5]">BOX</span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-base font-black tracking-tight text-white uppercase font-mono">
-              BLACKBOX
-            </h1>
-            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
-              FW V23
-            </span>
-          </div>
+          <span className="bg-[#050f10] text-[#e3b862] text-[11px] font-bold px-2 py-1 uppercase tracking-wider">
+            V23 ONLINE
+          </span>
         </div>
 
-        {/* Studio Utilities (Tone3000, Tuner, Tap, Shortcuts) */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-neutral-900/90 px-2 py-1 rounded-xl border border-neutral-800">
+        {/* Studio Utilities */}
+        <nav className="order-3 sm:order-2 w-full sm:w-auto flex items-center gap-1.5 overflow-x-auto">
           <button
             onClick={onOpenCommunity}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-neutral-800 text-xs font-semibold transition"
-            title="Explorar Tone3000 e Timbres da Comunidade"
+            className="bg-[#133332] hover:bg-[#1b4544] text-[#e3b862] px-3.5 min-h-[40px] text-xs font-semibold uppercase tracking-wider transition whitespace-nowrap"
+            title="Tone3000 & NAM (Atalho: C)"
           >
-            <Compass size={14} className="text-amber-400" />
-            <span>Tone3000 & NAM</span>
+            TONE3000 / NAM
           </button>
-
-          <div className="w-[1px] h-3 bg-neutral-800" />
 
           <button
             onClick={onOpenTuner}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 text-xs font-semibold transition"
-            title="Afinador Cromático (Atalho: T)"
+            className="bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] px-3.5 min-h-[40px] text-xs font-semibold uppercase tracking-wider transition whitespace-nowrap"
+            title="Afinador (Atalho: T)"
           >
-            <Mic size={13} className="text-amber-500" />
-            <span>Afinador</span>
+            AFINADOR
           </button>
-
-          <div className="w-[1px] h-3 bg-neutral-800" />
 
           <button
             onClick={onOpenTapTempo}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 text-xs font-semibold transition"
+            className="bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] px-3.5 min-h-[40px] text-xs font-semibold uppercase tracking-wider transition whitespace-nowrap"
             title="Tap Tempo / BPM"
           >
-            <Activity size={13} className="text-amber-500" />
-            <span>Tap BPM</span>
+            TAP BPM
           </button>
-
-          <div className="w-[1px] h-3 bg-neutral-800" />
 
           <button
             onClick={onOpenShortcuts}
-            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
-            title="Atalhos de Teclado"
+            className="hidden md:inline-flex items-center bg-[#133332] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] px-3 min-h-[40px] text-xs font-semibold uppercase tracking-wider transition whitespace-nowrap"
+            title="Atalhos"
           >
-            <Keyboard size={14} />
+            ATALHOS
           </button>
-        </div>
+        </nav>
 
-        {/* Master Output & Connection */}
-        <div className="flex items-center gap-4">
-          {/* Master Volume Knob */}
-          <div className="flex items-center gap-2 bg-neutral-900/90 px-2.5 py-1 rounded-xl border border-neutral-800">
+        {/* Master & Connection */}
+        <div className="order-2 sm:order-3 flex items-center gap-2 sm:gap-3">
+          {/* Compact Master Output */}
+          <div className="hidden md:flex items-center gap-2 bg-[#0e2828] px-3 py-1">
             <Knob
-              label="Master"
+              label="MASTER"
               value={masterVolume}
-              color="#f59e0b"
+              color="#e3b862"
               size="sm"
               disabled={!isConnected}
               onChange={onMasterVolumeChange}
             />
           </div>
 
-          {/* Connection Actions */}
-          <div className="flex items-center gap-2">
-            {!isConnected ? (
-              <>
-                <button
-                  onClick={onConnectBLE}
-                  disabled={isConnecting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/30 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 text-xs font-bold transition disabled:opacity-50"
-                  title="Conectar via Bluetooth"
-                >
-                  <Bluetooth size={14} />
-                  <span>{isConnecting && connectionState.method === 'ble' ? 'Buscando...' : 'Bluetooth'}</span>
-                </button>
-
-                <button
-                  onClick={onConnectMIDI}
-                  disabled={isConnecting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold transition disabled:opacity-50"
-                  title="Conectar via USB MIDI SysEx"
-                >
-                  <Cable size={14} />
-                  <span>{isConnecting && connectionState.method === 'midi' ? 'Conectando...' : 'Cabo USB'}</span>
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 bg-neutral-900 px-2.5 py-1 rounded-xl border border-neutral-800">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
-                  <div className="text-left">
-                    <div className="text-xs font-bold text-neutral-200 truncate max-w-[120px] font-mono">
-                      {connectionState.deviceName || 'BlackBox'}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={onDisconnect}
-                  className="p-1.5 rounded-xl bg-neutral-900 hover:bg-red-950/40 border border-neutral-800 hover:border-red-500/40 text-neutral-400 hover:text-red-300 transition"
-                  title="Desconectar da pedaleira"
-                >
-                  <Unplug size={14} />
-                </button>
-              </div>
-            )}
+          {/* Mobile Master quick value */}
+          <div className="flex md:hidden items-center gap-2 bg-[#0e2828] px-2.5 min-h-[42px]">
+            <span className="text-[10px] font-bold uppercase text-[#a9c0bc]">MST</span>
+            <span className="font-display text-xl text-[#e3b862] tabular-nums">{masterVolume}</span>
           </div>
+
+          {!isConnected ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onConnectBLE}
+                disabled={isConnecting}
+                className="bg-[#e3b862] hover:bg-[#f0c97a] active:scale-[0.98] text-[#231a06] font-semibold text-xs sm:text-sm uppercase tracking-wide px-4 min-h-[42px] transition disabled:opacity-50"
+              >
+                {isConnecting && connectionState.method === 'ble' ? 'BUSCANDO...' : 'BLUETOOTH'}
+              </button>
+
+              <button
+                onClick={onConnectMIDI}
+                disabled={isConnecting}
+                className="bg-[#133332] hover:bg-[#1b4544] active:scale-[0.98] text-[#eaf0ea] font-semibold text-xs sm:text-sm uppercase tracking-wide px-3.5 min-h-[42px] transition disabled:opacity-50"
+              >
+                {isConnecting && connectionState.method === 'midi' ? 'LENDO...' : 'CABO USB'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <div className="bg-[#050f10] px-3.5 min-h-[42px] flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#63e0f5]" />
+                <span className="font-display text-xl text-[#63e0f5] truncate max-w-[110px]">
+                  {connectionState.deviceName || 'BLACKBOX'}
+                </span>
+              </div>
+
+              <button
+                onClick={onDisconnect}
+                className="bg-[#133332] hover:bg-[#e5484d] hover:text-white text-[#a9c0bc] font-semibold text-xs uppercase tracking-wider px-3.5 min-h-[42px] transition"
+              >
+                SAIR
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Bottom status bar line */}
+      <div className="w-full h-[3px] bg-[#133332]">
+        <div
+          className={`h-full transition-all duration-300 ${
+            isConnected ? 'w-full bg-[#63e0f5]' : isConnecting ? 'w-1/2 bg-[#e3b862]' : 'w-0'
+          }`}
+        />
       </div>
     </header>
   )

@@ -1,12 +1,60 @@
 import React from 'react'
 import { BLOCKS } from '../protocol/constants'
-import { GitCommit, Volume2 } from 'lucide-react'
+
+function StageGraphic({ blockKey, enabled }) {
+  const ledColor = enabled ? '#e5484d' : '#3a1414'
+
+  if (blockKey === 'amp') {
+    return (
+      <svg viewBox="0 0 80 48" className="w-14 h-9 shrink-0" aria-hidden="true">
+        <rect x="2" y="2" width="76" height="44" rx="2" fill="#1e1a12" />
+        <rect x="6" y="6" width="68" height="12" fill="#e3b862" />
+        {[15, 27, 39, 51, 63].map((x) => (
+          <circle key={x} cx={x} cy="12" r="2.8" fill="#151719" />
+        ))}
+        <rect x="6" y="22" width="68" height="20" fill="#2d261a" />
+        <path d="M6 28H74M6 34H74M6 39H74" stroke="#1e1a12" strokeWidth="1.5" />
+        <circle cx="70" cy="12" r="2" fill={ledColor} />
+      </svg>
+    )
+  }
+
+  if (blockKey === 'cab') {
+    return (
+      <svg viewBox="0 0 44 48" className="w-9 h-9 shrink-0" aria-hidden="true">
+        <rect x="2" y="2" width="40" height="44" rx="2" fill="#23160d" />
+        <circle cx="22" cy="16" r="10" fill="#0e0a07" />
+        <circle cx="22" cy="16" r="3.5" fill="#c8743a" />
+        <circle cx="22" cy="36" r="7" fill="#0e0a07" />
+        <circle cx="22" cy="36" r="2.5" fill="#c8743a" />
+      </svg>
+    )
+  }
+
+  // Mini stompbox SVG (FX, MOD, DLY, REV)
+  return (
+    <svg viewBox="0 0 40 52" className="w-8 h-9 shrink-0" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="48" rx="2" fill="#15181b" />
+      <circle cx="12" cy="11" r="3.5" fill="#2b3035" />
+      <path d="M12 11V8" stroke="#eef1f2" strokeWidth="1.2" />
+      <circle cx="28" cy="11" r="3.5" fill="#2b3035" />
+      <path d="M28 11V8" stroke="#eef1f2" strokeWidth="1.2" />
+      <circle cx="20" cy="22" r="2.2" fill={ledColor} />
+      <rect x="8" y="27" width="24" height="4" fill="#262b30" />
+      <circle cx="20" cy="40" r="6" fill="#7c858c" />
+      <circle cx="20" cy="40" r="3.5" fill="#c9ced3" />
+    </svg>
+  )
+}
 
 export function SignalChain({
   routing = [0, 1, 5, 2, 3, 4],
   blocksState = {},
   onBlockClick,
   onToggleBlock,
+  onMoveBlock,
+  ampNames = [],
+  cabNames = [],
 }) {
   const blocksById = {}
   BLOCKS.forEach((b) => {
@@ -14,75 +62,138 @@ export function SignalChain({
   })
 
   return (
-    <div className="bg-[#121418] border border-neutral-800/80 rounded-2xl p-3 shadow-lg">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-          <GitCommit size={13} className="text-amber-500" />
-          Roteamento de Sinal
-        </span>
-        <span className="text-[10px] text-neutral-500 font-mono">
-          Clique no pedal para focar
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-1 scrollbar-none">
-        <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1.5 rounded-lg border border-neutral-800 whitespace-nowrap">
-          IN
+    <section className="bg-[#0e2828] p-3 sm:p-4 relative overflow-hidden">
+      <div className="relative flex items-center gap-2 sm:gap-3 overflow-x-auto py-1">
+        {/* Animated signal cable behind nodes */}
+        <div
+          className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-1 bg-[#133332] overflow-hidden pointer-events-none"
+          aria-hidden="true"
+        >
+          <div className="w-16 h-full bg-[#e3b862] cable-pulse" />
         </div>
 
-        <div className="text-neutral-600 text-xs font-mono select-none">→</div>
+        {/* Input P10 Jack */}
+        <div
+          className="hidden md:flex flex-col items-center gap-1 relative z-10 shrink-0"
+          title="IN"
+        >
+          <div className="w-8 h-8 rounded-full bg-[#9aa3a8] border-[6px] border-[#3b4246]" />
+          <span className="font-display text-xs text-[#a9c0bc]">IN</span>
+        </div>
 
-        {routing.map((blockId, index) => {
-          const block = blocksById[blockId]
-          if (!block) return null
-          const isEnabled = blocksState[block.key]?.enabled ?? false
+        {/* 6 Interactive Stages */}
+        <div className="relative z-10 flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 min-w-[540px] sm:min-w-0">
+          {routing.map((blockId, index) => {
+            const block = blocksById[blockId]
+            if (!block) return null
 
-          return (
-            <React.Fragment key={block.id}>
+            const blkState = blocksState[block.key] || {}
+            const isEnabled = blkState.enabled ?? false
+            const modelIdx = blkState.modelIndex ?? 0
+
+            let modelList = block.models
+            if (block.key === 'amp' && ampNames.length > 0) modelList = ampNames
+            if (block.key === 'cab' && cabNames.length > 0) modelList = cabNames
+            const activeModelName = modelList[modelIdx] || modelList[0] || ''
+
+            return (
               <div
+                key={block.id}
                 onClick={() => onBlockClick && onBlockClick(block.key)}
-                className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm whitespace-nowrap cursor-pointer select-none ${
-                  isEnabled
-                    ? 'bg-[#181b22] border-neutral-700 text-neutral-100 hover:border-neutral-500'
-                    : 'bg-[#101215] border-neutral-800 text-neutral-500 opacity-60 hover:opacity-90'
-                }`}
+                className="flex flex-col justify-between p-2.5 cursor-pointer transition-colors select-none min-h-[108px]"
                 style={{
-                  borderLeft: `3px solid ${isEnabled ? block.color : '#373d49'}`,
+                  backgroundColor: isEnabled ? block.color : '#133332',
+                  color: isEnabled ? '#071011' : '#a9c0bc',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onToggleBlock && onToggleBlock(block.key)
-                  }}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    isEnabled
-                      ? 'bg-green-400 shadow-[0_0_8px_#2ecc71]'
-                      : 'bg-neutral-700 hover:bg-neutral-600'
-                  }`}
-                  title="Ligar / Desligar bloco"
-                />
-                <span>{block.name}</span>
-                <span className="text-[9px] font-mono text-neutral-500 ml-0.5">
-                  #{index + 1}
-                </span>
+                {/* Top row: order + LED */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display text-sm opacity-75">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleBlock && onToggleBlock(block.key)
+                    }}
+                    className="flex items-center gap-1.5 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{
+                      backgroundColor: isEnabled ? 'rgba(7, 16, 17, 0.22)' : '#050f10',
+                      color: isEnabled ? '#071011' : '#a9c0bc',
+                    }}
+                    title="Ligar / Bypass"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: isEnabled ? '#e5484d' : '#3a1414' }}
+                    />
+                    <span>{isEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+
+                {/* Middle: SVG Graphic + Name */}
+                <div className="flex items-center gap-2 my-1.5">
+                  <StageGraphic blockKey={block.key} enabled={isEnabled} />
+                  <div className="min-w-0">
+                    <div className="font-display text-xl leading-none truncate">
+                      {block.name}
+                    </div>
+                    <div className="text-[11px] font-semibold truncate opacity-85 mt-0.5">
+                      {activeModelName}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom: Reorder controls */}
+                {onMoveBlock && (
+                  <div className="flex items-center justify-end gap-1 pt-1">
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onMoveBlock(index, index - 1)
+                      }}
+                      className="px-2 py-0.5 text-xs font-bold disabled:opacity-25 transition"
+                      style={{
+                        backgroundColor: isEnabled ? 'rgba(7, 16, 17, 0.16)' : '#071819',
+                      }}
+                      title="Mover para esquerda"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === routing.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onMoveBlock(index, index + 1)
+                      }}
+                      className="px-2 py-0.5 text-xs font-bold disabled:opacity-25 transition"
+                      style={{
+                        backgroundColor: isEnabled ? 'rgba(7, 16, 17, 0.16)' : '#071819',
+                      }}
+                      title="Mover para direita"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
               </div>
+            )
+          })}
+        </div>
 
-              {index < routing.length - 1 && (
-                <div className="text-neutral-600 text-xs font-mono select-none">→</div>
-              )}
-            </React.Fragment>
-          )
-        })}
-
-        <div className="text-neutral-600 text-xs font-mono select-none">→</div>
-
-        <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1.5 rounded-lg border border-neutral-800 whitespace-nowrap">
-          <Volume2 size={12} className="text-amber-500" />
-          OUT
+        {/* Output P10 Jack */}
+        <div
+          className="hidden md:flex flex-col items-center gap-1 relative z-10 shrink-0"
+          title="OUT"
+        >
+          <div className="w-8 h-8 rounded-full bg-[#9aa3a8] border-[6px] border-[#3b4246]" />
+          <span className="font-display text-xs text-[#a9c0bc]">OUT</span>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
