@@ -33,6 +33,17 @@ export function Knob({
   // Map 0..100 to -135deg .. +135deg
   const angle = ((value - min) / (max - min)) * 270 - 135
 
+  const updateValueFromDelta = (deltaY) => {
+    const range = max - min
+    const deltaVal = (deltaY / 140) * range
+    let newVal = Math.round(startValRef.current + deltaVal)
+    newVal = Math.max(min, Math.min(max, newVal))
+    if (onChange) {
+      onChange(newVal)
+    }
+  }
+
+  // Mouse handlers
   const handleMouseDown = (e) => {
     if (disabled || isEditing) return
     setIsDragging(true)
@@ -41,13 +52,7 @@ export function Knob({
 
     const handleMouseMove = (moveEvent) => {
       const deltaY = startYRef.current - moveEvent.clientY
-      const range = max - min
-      const deltaVal = (deltaY / 140) * range
-      let newVal = Math.round(startValRef.current + deltaVal)
-      newVal = Math.max(min, Math.min(max, newVal))
-      if (onChange) {
-        onChange(newVal)
-      }
+      updateValueFromDelta(deltaY)
     }
 
     const handleMouseUp = () => {
@@ -58,6 +63,32 @@ export function Knob({
 
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // Touch handlers for mobile
+  const handleTouchStart = (e) => {
+    if (disabled || isEditing || e.touches.length !== 1) return
+    setIsDragging(true)
+    startYRef.current = e.touches[0].clientY
+    startValRef.current = value
+
+    const handleTouchMove = (moveEvent) => {
+      if (moveEvent.touches.length !== 1) return
+      moveEvent.preventDefault() // prevent page scroll while dragging knob
+      const deltaY = startYRef.current - moveEvent.touches[0].clientY
+      updateValueFromDelta(deltaY)
+    }
+
+    const handleTouchEnd = () => {
+      setIsDragging(false)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchEnd)
+    }
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchEnd)
   }
 
   const handleWheel = (e) => {
@@ -90,8 +121,8 @@ export function Knob({
 
   const sizeClasses = {
     sm: 'w-9 h-9',
-    md: 'w-11 h-11',
-    lg: 'w-13 h-13',
+    md: 'w-11 h-11 sm:w-12 sm:h-12',
+    lg: 'w-13 h-13 sm:w-14 sm:h-14',
   }[size] || 'w-11 h-11'
 
   return (
@@ -106,9 +137,10 @@ export function Knob({
 
       <div
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
         onWheel={handleWheel}
         onDoubleClick={() => !disabled && setIsEditing(true)}
-        className={`relative ${sizeClasses} rounded-full cursor-ns-resize flex items-center justify-center transition-transform ${
+        className={`relative ${sizeClasses} rounded-full cursor-ns-resize touch-none flex items-center justify-center transition-transform ${
           isDragging ? 'scale-105' : 'hover:scale-[1.03]'
         }`}
         style={{
@@ -116,7 +148,7 @@ export function Knob({
           boxShadow: '0 3px 6px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.15), inset 0 -2px 3px rgba(0,0,0,0.9)',
           border: '1px solid #2e333d'
         }}
-        title={`${label}: ${value}${unit} (Arraste ou dê duplo clique para editar)`}
+        title={`${label}: ${value}${unit} (Arraste ou toque para ajustar)`}
       >
         {/* Subtle rotary pointer line */}
         <div
@@ -148,7 +180,7 @@ export function Knob({
         />
       ) : (
         <span
-          onDoubleClick={() => !disabled && setIsEditing(true)}
+          onClick={() => !disabled && setIsEditing(true)}
           className="text-[10px] font-mono font-bold text-neutral-300 bg-neutral-900/90 hover:bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-800 cursor-text"
         >
           {value}{unit}
