@@ -40,17 +40,17 @@ export function BlockCard({
   return (
     <article
       className={`flex flex-col transition-colors ${
-        isEnabled ? 'bg-[#0e2828]' : 'bg-[#0a1e1f] opacity-70'
+        isEnabled ? 'bg-[#141416]' : 'bg-[#0f0f11] opacity-70'
       }`}
     >
       {/* Flat top color bar */}
       <div
         className="h-1 w-full transition-colors"
-        style={{ backgroundColor: isEnabled ? block.color : '#133332' }}
+        style={{ backgroundColor: isEnabled ? block.color : '#1e1e22' }}
       />
 
       {/* Module Header */}
-      <div className="bg-[#133332] px-4 py-2.5 flex items-center justify-between gap-2">
+      <div className="bg-[#1e1e22] px-4 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
@@ -62,13 +62,13 @@ export function BlockCard({
               className="w-3 h-3 rounded-full shrink-0 transition-colors"
               style={{ backgroundColor: isEnabled ? '#e5484d' : '#3a1414' }}
             />
-            <span className="font-display text-2xl tracking-wide text-[#eaf0ea] truncate">
+            <span className="font-display text-2xl tracking-wide text-[#f2efe9] truncate">
               {block.name}
             </span>
           </button>
 
           {shortcutNumber && (
-            <span className="bg-[#071819] text-[#a9c0bc] text-[11px] font-bold px-1.5 py-0.5 shrink-0">
+            <span className="bg-[#0b0b0c] text-[#9a968e] text-[11px] font-bold px-1.5 py-0.5 shrink-0">
               {shortcutNumber}
             </span>
           )}
@@ -79,7 +79,7 @@ export function BlockCard({
           <button
             type="button"
             onClick={() => onCopyBlock && onCopyBlock(block.key, state)}
-            className="bg-[#071819] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition"
+            className="bg-[#0b0b0c] hover:bg-[#2a2a30] text-[#9a968e] hover:text-[#f2efe9] px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition"
           >
             COPIAR
           </button>
@@ -88,7 +88,7 @@ export function BlockCard({
             <button
               type="button"
               onClick={() => onPasteBlock && onPasteBlock(block.key)}
-              className="bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06] px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition"
+              className="bg-[#d9822b] hover:bg-[#e8953f] text-[#120902] px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition"
             >
               COLAR
             </button>
@@ -98,7 +98,7 @@ export function BlockCard({
             type="button"
             onClick={onMoveLeft}
             disabled={!canMoveLeft}
-            className="bg-[#071819] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] px-2 py-1 text-xs font-bold disabled:opacity-25 transition"
+            className="bg-[#0b0b0c] hover:bg-[#2a2a30] text-[#9a968e] hover:text-[#f2efe9] px-2 py-1 text-xs font-bold disabled:opacity-25 transition"
             title="Mover para esquerda"
           >
             ←
@@ -107,7 +107,7 @@ export function BlockCard({
             type="button"
             onClick={onMoveRight}
             disabled={!canMoveRight}
-            className="bg-[#071819] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] px-2 py-1 text-xs font-bold disabled:opacity-25 transition"
+            className="bg-[#0b0b0c] hover:bg-[#2a2a30] text-[#9a968e] hover:text-[#f2efe9] px-2 py-1 text-xs font-bold disabled:opacity-25 transition"
             title="Mover para direita"
           >
             →
@@ -120,7 +120,7 @@ export function BlockCard({
         <select
           value={modelIndex}
           onChange={(e) => onModelChange(Number(e.target.value))}
-          className="w-full bg-[#050f10] text-[#eaf0ea] font-semibold text-sm px-3 py-2.5 border-0 focus:outline focus:outline-2 focus:outline-[#e3b862] cursor-pointer truncate"
+          className="w-full bg-[#060607] text-[#f2efe9] font-semibold text-sm px-3 py-2.5 border-0 focus:outline focus:outline-2 focus:outline-[#d9822b] cursor-pointer truncate"
         >
           {modelsList.map((m, idx) => (
             <option key={idx} value={idx}>
@@ -140,7 +140,7 @@ export function BlockCard({
                 className="flex items-center justify-center min-h-[76px] select-none"
                 aria-hidden="true"
               >
-                <div className="w-3 h-0.5 bg-[#133332]" />
+                <div className="w-3 h-0.5 bg-[#1e1e22]" />
               </div>
             )
           }
@@ -166,8 +166,8 @@ export function BlockCard({
           onClick={onToggle}
           className={`w-full h-10 font-display text-lg uppercase tracking-wider transition flex items-center justify-center gap-2 ${
             isEnabled
-              ? 'bg-[#133332] text-[#eaf0ea] hover:bg-[#1b4544]'
-              : 'bg-[#050f10] text-[#6f8a87] hover:text-[#eaf0ea]'
+              ? 'bg-[#1e1e22] text-[#f2efe9] hover:bg-[#2a2a30]'
+              : 'bg-[#060607] text-[#9a968e] hover:text-[#f2efe9]'
           }`}
         >
           <span

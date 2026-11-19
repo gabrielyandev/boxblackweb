@@ -24,7 +24,7 @@ export function Knob({
   max = 100,
   step = 1,
   onChange,
-  color = '#e3b862',
+  color = '#d9822b',
   unit = '',
   disabled = false,
   size = 'md', // 'sm' | 'md' | 'lg'
@@ -145,7 +145,7 @@ export function Knob({
         disabled ? 'opacity-40 pointer-events-none' : ''
       }`}
     >
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#a9c0bc] truncate max-w-[78px]">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9a968e] truncate max-w-[78px]">
         {label}
       </span>
 
@@ -161,12 +161,12 @@ export function Knob({
       >
         <svg viewBox="0 0 56 56" className="w-full h-full overflow-visible">
           {/* Outer well */}
-          <circle cx="28" cy="28" r="24" fill="#061112" />
+          <circle cx="28" cy="28" r="24" fill="#060607" />
           {/* Background track arc */}
           <path
             d={TRACK_ARC}
             fill="none"
-            stroke="#133332"
+            stroke="#1e1e22"
             strokeWidth="3.5"
             strokeLinecap="butt"
           />
@@ -175,18 +175,18 @@ export function Knob({
             <path
               d={valueArc}
               fill="none"
-              stroke={disabled ? '#3d5654' : color}
+              stroke={disabled ? '#38383e' : color}
               strokeWidth="3.5"
               strokeLinecap="butt"
             />
           )}
           {/* Concentric flat hardware cap */}
-          <circle cx="28" cy="28" r="18" fill="#15181b" />
-          <circle cx="28" cy="28" r="14" fill="#202429" />
+          <circle cx="28" cy="28" r="18" fill="#151518" />
+          <circle cx="28" cy="28" r="14" fill="#202024" />
           {/* Crisp pointer */}
           <path
             d="M28 28V14"
-            stroke="#eef1f2"
+            stroke="#f2efe9"
             strokeWidth="2.4"
             strokeLinecap="round"
             style={{
@@ -205,12 +205,12 @@ export function Knob({
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleCommitEdit}
           onKeyDown={handleKeyDown}
-          className="w-12 text-center font-display text-lg bg-[#050f10] text-[#e3b862] outline outline-2 outline-[#e3b862] px-1 py-0"
+          className="w-12 text-center font-display text-lg bg-[#060607] text-[#e5a93c] outline outline-2 outline-[#d9822b] px-1 py-0"
         />
       ) : (
         <span
           onClick={() => !disabled && setIsEditing(true)}
-          className="font-display text-lg text-[#eaf0ea] tabular-nums cursor-text hover:text-[#e3b862] leading-none pt-0.5"
+          className="font-display text-lg text-[#f2efe9] tabular-nums cursor-text hover:text-[#e5a93c] leading-none pt-0.5"
         >
           {value}{unit}
         </span>

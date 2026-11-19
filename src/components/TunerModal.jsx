@@ -168,53 +168,53 @@ export function TunerModal({ isOpen, onClose }) {
   const isTuned = Math.abs(cents) <= 3 && noteName !== '--'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
-      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-md p-6 relative flex flex-col items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+      <div className="bg-[#141416] border-t-4 border-[#d9822b] w-full max-w-md p-6 relative flex flex-col items-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-lg transition"
         >
           ✕
         </button>
 
-        <h2 className="font-display text-3xl text-[#eaf0ea] mb-6 self-start">
+        <h2 className="font-display text-3xl text-[#f2efe9] mb-6 self-start">
           AFINADOR
         </h2>
 
         {errorMsg ? (
-          <div className="w-full p-4 bg-[#050f10] text-[#e5484d] text-sm font-semibold text-center my-4">
+          <div className="w-full p-4 bg-[#060607] text-[#e5484d] text-sm font-semibold text-center my-4">
             {errorMsg}
           </div>
         ) : (
-          <div className="w-full bg-[#05080a] p-6 flex flex-col items-center">
+          <div className="w-full bg-[#060607] p-6 flex flex-col items-center">
             <div
               className={`font-display text-7xl tracking-tight leading-none transition-colors ${
                 isTuned
-                  ? 'text-[#63e0f5]'
+                  ? 'text-[#e5a93c]'
                   : noteName !== '--'
-                  ? 'text-[#eaf0ea]'
-                  : 'text-[#3d5654]'
+                  ? 'text-[#f2efe9]'
+                  : 'text-[#38383e]'
               }`}
             >
               {noteName}
             </div>
-            <div className="text-xs font-semibold text-[#a9c0bc] mt-2 tabular-nums">
+            <div className="text-xs font-semibold text-[#9a968e] mt-2 tabular-nums">
               {pitch > 0 ? `${pitch.toFixed(1)} HZ` : 'AGUARDANDO SINAL'}
             </div>
 
             {/* Flat horizontal gauge */}
             <div className="w-full mt-6">
-              <div className="flex justify-between text-[11px] font-semibold text-[#6f8a87] mb-2 tabular-nums">
+              <div className="flex justify-between text-[11px] font-semibold text-[#9a968e] mb-2 tabular-nums">
                 <span>-50</span>
                 <span>0</span>
                 <span>+50</span>
               </div>
 
-              <div className="w-full h-2 bg-[#133332] relative">
-                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-[#2aa3a6]" />
+              <div className="w-full h-2 bg-[#1e1e22] relative">
+                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-[#b86b1f]" />
                 <div
                   className={`absolute top-1/2 -translate-y-1/2 w-3 h-4 -ml-1.5 transition-all duration-75 ${
-                    isTuned ? 'bg-[#63e0f5]' : 'bg-[#e3b862]'
+                    isTuned ? 'bg-[#e5a93c]' : 'bg-[#d9822b]'
                   }`}
                   style={{
                     left: `${Math.max(4, Math.min(96, 50 + (cents / 50) * 46))}%`,
@@ -224,11 +224,11 @@ export function TunerModal({ isOpen, onClose }) {
 
               <div className="mt-4 text-center font-display text-xl tabular-nums">
                 {noteName !== '--' ? (
-                  <span className={isTuned ? 'text-[#63e0f5]' : 'text-[#eaf0ea]'}>
+                  <span className={isTuned ? 'text-[#e5a93c]' : 'text-[#f2efe9]'}>
                     {cents > 0 ? `+${cents}` : cents} CENTS
                   </span>
                 ) : (
-                  <span className="text-[#3d5654]">--</span>
+                  <span className="text-[#38383e]">--</span>
                 )}
               </div>
             </div>
@@ -240,8 +240,8 @@ export function TunerModal({ isOpen, onClose }) {
             onClick={isListening ? stopTuner : startTuner}
             className={`px-5 h-11 text-xs font-bold uppercase tracking-wider transition ${
               isListening
-                ? 'bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea]'
-                : 'bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06]'
+                ? 'bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9]'
+                : 'bg-[#d9822b] hover:bg-[#e8953f] text-[#120902]'
             }`}
           >
             {isListening ? 'PAUSAR' : 'ATIVAR ÁUDIO'}

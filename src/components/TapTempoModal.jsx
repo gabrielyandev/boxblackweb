@@ -50,54 +50,54 @@ export function TapTempoModal({ isOpen, onClose, currentBpm = 120, onBpmChange }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
-      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-sm p-6 relative flex flex-col items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+      <div className="bg-[#141416] border-t-4 border-[#d9822b] w-full max-w-sm p-6 relative flex flex-col items-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-lg transition"
         >
           ✕
         </button>
 
-        <h2 className="font-display text-3xl text-[#eaf0ea] mb-5 self-start">
+        <h2 className="font-display text-3xl text-[#f2efe9] mb-5 self-start">
           TAP TEMPO
         </h2>
 
-        <div className="w-full bg-[#05080a] p-5 flex flex-col items-center mb-4">
+        <div className="w-full bg-[#060607] p-5 flex flex-col items-center mb-4">
           <div className="flex items-center gap-3">
             <span
               className={`w-3.5 h-3.5 rounded-full transition-colors ${
-                isFlashing ? 'bg-[#e3b862]' : 'bg-[#3a2a10]'
+                isFlashing ? 'bg-[#e5a93c]' : 'bg-[#38383e]'
               }`}
             />
-            <span className="font-display text-5xl text-[#eaf0ea] tabular-nums leading-none">
+            <span className="font-display text-5xl text-[#f2efe9] tabular-nums leading-none">
               {bpm}
             </span>
-            <span className="font-display text-xl text-[#a9c0bc]">BPM</span>
+            <span className="font-display text-xl text-[#9a968e]">BPM</span>
           </div>
-          <div className="text-xs font-semibold text-[#63e0f5] mt-2 tabular-nums">
+          <div className="text-xs font-semibold text-[#e5a93c] mt-2 tabular-nums">
             {(60000 / bpm).toFixed(0)} MS (1/4)
           </div>
         </div>
 
         <button
           onClick={handleTap}
-          className="w-full py-7 bg-[#e3b862] hover:bg-[#f0c97a] active:scale-[0.98] text-[#231a06] font-display text-4xl tracking-widest transition select-none"
+          className="w-full py-7 bg-[#d9822b] hover:bg-[#e8953f] active:scale-[0.98] text-[#120902] font-display text-4xl tracking-widest transition select-none"
         >
           TAP
         </button>
 
         <div className="w-full mt-5 flex items-center gap-3">
-          <span className="font-display text-lg text-[#a9c0bc]">40</span>
+          <span className="font-display text-lg text-[#9a968e]">40</span>
           <input
             type="range"
             min="40"
             max="240"
             value={bpm}
             onChange={(e) => handleManualChange(e.target.value)}
-            className="w-full accent-[#e3b862] cursor-pointer"
+            className="w-full accent-[#d9822b] cursor-pointer"
           />
-          <span className="font-display text-lg text-[#a9c0bc]">240</span>
+          <span className="font-display text-lg text-[#9a968e]">240</span>
         </div>
       </div>
     </div>

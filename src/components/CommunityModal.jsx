@@ -116,28 +116,28 @@ export function CommunityModal({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
-      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-4xl max-h-[88vh] p-5 relative flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+      <div className="bg-[#141416] border-t-4 border-[#d9822b] w-full max-w-4xl max-h-[88vh] p-5 relative flex flex-col overflow-hidden">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-lg transition"
         >
           ✕
         </button>
 
         {/* Header & Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mr-10">
-          <h2 className="font-display text-3xl text-[#eaf0ea]">
-            TONE<span className="text-[#63e0f5]">3000</span> & SLOTS NAM
+          <h2 className="font-display text-3xl text-[#f2efe9]">
+            TONE<span className="text-[#e5a93c]">3000</span> & SLOTS NAM
           </h2>
 
-          <div className="flex items-center gap-1 bg-[#050f10] p-1">
+          <div className="flex items-center gap-1 bg-[#060607] p-1">
             <button
               onClick={() => setActiveTab('explore')}
               className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                 activeTab === 'explore'
-                  ? 'bg-[#e3b862] text-[#231a06]'
-                  : 'text-[#a9c0bc] hover:text-[#eaf0ea]'
+                  ? 'bg-[#d9822b] text-[#120902]'
+                  : 'text-[#9a968e] hover:text-[#f2efe9]'
               }`}
             >
               TONE3000
@@ -146,8 +146,8 @@ export function CommunityModal({
               onClick={() => setActiveTab('slots')}
               className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                 activeTab === 'slots'
-                  ? 'bg-[#e3b862] text-[#231a06]'
-                  : 'text-[#a9c0bc] hover:text-[#eaf0ea]'
+                  ? 'bg-[#d9822b] text-[#120902]'
+                  : 'text-[#9a968e] hover:text-[#f2efe9]'
               }`}
             >
               SLOTS FLASH (20)
@@ -164,7 +164,7 @@ export function CommunityModal({
                 placeholder="Filtrar (JCM800, 5150, Fender, V30...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-[#050f10] text-[#eaf0ea] placeholder-[#6f8a87] text-sm font-semibold px-3 h-10 border-0 focus:outline focus:outline-2 focus:outline-[#e3b862]"
+                className="flex-1 bg-[#060607] text-[#f2efe9] placeholder-[#9a968e]/60 text-sm font-semibold px-3 h-10 border-0 focus:outline focus:outline-2 focus:outline-[#d9822b]"
               />
 
               <div className="flex items-center gap-1 overflow-x-auto">
@@ -174,8 +174,8 @@ export function CommunityModal({
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-3 h-10 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition ${
                       selectedCategory === cat
-                        ? 'bg-[#63e0f5] text-[#04191a]'
-                        : 'bg-[#133332] text-[#a9c0bc] hover:text-[#eaf0ea]'
+                        ? 'bg-[#e5a93c] text-[#120902]'
+                        : 'bg-[#1e1e22] text-[#9a968e] hover:text-[#f2efe9]'
                     }`}
                   >
                     {cat}
@@ -188,16 +188,16 @@ export function CommunityModal({
               {filteredModels.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-[#133332] p-3.5 flex items-center justify-between gap-3"
+                  className="bg-[#1e1e22] p-3.5 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
-                    <div className="font-display text-xl text-[#eaf0ea] truncate">
+                    <div className="font-display text-xl text-[#f2efe9] truncate">
                       {item.name}
                     </div>
-                    <div className="text-xs text-[#a9c0bc] mt-0.5 flex items-center gap-2">
+                    <div className="text-xs text-[#9a968e] mt-0.5 flex items-center gap-2">
                       <span>{item.author}</span>
                       <span>·</span>
-                      <span className="text-[#63e0f5] font-semibold">{item.type}</span>
+                      <span className="text-[#e5a93c] font-semibold">{item.type}</span>
                     </div>
                   </div>
 
@@ -205,7 +205,7 @@ export function CommunityModal({
                     href={item.tone3000Url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06] font-bold text-xs uppercase px-3 py-2 shrink-0 transition"
+                    className="bg-[#d9822b] hover:bg-[#e8953f] text-[#120902] font-bold text-xs uppercase px-3 py-2 shrink-0 transition"
                   >
                     TONE3000 ↗
                   </a>
@@ -213,13 +213,13 @@ export function CommunityModal({
               ))}
             </div>
 
-            <div className="mt-3 pt-3 bg-[#050f10] px-3 py-2 flex items-center justify-between text-xs">
-              <span className="text-[#a9c0bc]">CATÁLOGO COMPLETO</span>
+            <div className="mt-3 pt-3 bg-[#060607] px-3 py-2 flex items-center justify-between text-xs">
+              <span className="text-[#9a968e]">CATÁLOGO COMPLETO</span>
               <a
                 href="https://tone3000.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#e3b862] hover:underline font-bold uppercase"
+                className="text-[#e5a93c] hover:underline font-bold uppercase"
               >
                 TONE3000.COM ↗
               </a>
@@ -235,8 +235,8 @@ export function CommunityModal({
                 onClick={() => setSelectedSlotType('amp')}
                 className={`px-4 h-10 text-xs font-bold uppercase tracking-wider transition ${
                   selectedSlotType === 'amp'
-                    ? 'bg-[#d9a441] text-[#071011]'
-                    : 'bg-[#133332] text-[#a9c0bc]'
+                    ? 'bg-[#d96b27] text-[#120902]'
+                    : 'bg-[#1e1e22] text-[#9a968e]'
                 }`}
               >
                 AMP · NAM (1–20)
@@ -245,8 +245,8 @@ export function CommunityModal({
                 onClick={() => setSelectedSlotType('cab')}
                 className={`px-4 h-10 text-xs font-bold uppercase tracking-wider transition ${
                   selectedSlotType === 'cab'
-                    ? 'bg-[#c8743a] text-[#071011]'
-                    : 'bg-[#133332] text-[#a9c0bc]'
+                    ? 'bg-[#b85d35] text-[#120902]'
+                    : 'bg-[#1e1e22] text-[#9a968e]'
                 }`}
               >
                 CAB · IR (1–20)
@@ -257,12 +257,12 @@ export function CommunityModal({
               {(selectedSlotType === 'amp' ? ampNames : cabNames).map((name, idx) => (
                 <div
                   key={idx}
-                  className="bg-[#050f10] px-3 py-2.5 flex items-center gap-2.5"
+                  className="bg-[#060607] px-3 py-2.5 flex items-center gap-2.5"
                 >
-                  <span className="font-display text-lg text-[#e3b862] tabular-nums">
+                  <span className="font-display text-lg text-[#d9822b] tabular-nums">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
-                  <span className="text-xs font-semibold text-[#eaf0ea] truncate">
+                  <span className="text-xs font-semibold text-[#f2efe9] truncate">
                     {name}
                   </span>
                 </div>

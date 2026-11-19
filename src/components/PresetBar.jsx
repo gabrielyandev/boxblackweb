@@ -68,11 +68,11 @@ export function PresetBar({
   }
 
   return (
-    <div className="bg-[#0e2828] p-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-[#141416] p-3 flex flex-wrap items-center justify-between gap-3">
       {/* OLED Display + Navigation */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="bg-[#05080a] px-4 py-1.5 min-w-[82px] text-center">
-          <span className="font-display text-4xl text-[#dff6ff] leading-none tabular-nums">
+        <div className="bg-[#060607] px-4 py-1.5 min-w-[82px] text-center">
+          <span className="font-display text-4xl text-[#f2efe9] leading-none tabular-nums">
             {currentPresetCode}
           </span>
         </div>
@@ -80,7 +80,7 @@ export function PresetBar({
         <button
           onClick={handlePrev}
           disabled={disabled || currentPresetId === 0}
-          className="bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-2xl w-11 h-11 flex items-center justify-center disabled:opacity-30 transition"
+          className="bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-2xl w-11 h-11 flex items-center justify-center disabled:opacity-30 transition"
           title="Preset Anterior"
         >
           −
@@ -90,7 +90,7 @@ export function PresetBar({
           value={currentPresetId}
           disabled={disabled}
           onChange={(e) => onSelectPreset(Number(e.target.value))}
-          className="bg-[#133332] text-[#eaf0ea] font-semibold text-sm px-3 h-11 border-0 focus:outline focus:outline-2 focus:outline-[#e3b862] cursor-pointer disabled:opacity-40"
+          className="bg-[#1e1e22] text-[#f2efe9] font-semibold text-sm px-3 h-11 border-0 focus:outline focus:outline-2 focus:outline-[#d9822b] cursor-pointer disabled:opacity-40"
         >
           {Array.from({ length: PROTOCOL.PRESET_COUNT }).map((_, idx) => {
             const code = `P${String(idx + 1).padStart(2, '0')}`
@@ -106,7 +106,7 @@ export function PresetBar({
         <button
           onClick={handleNext}
           disabled={disabled || currentPresetId === PROTOCOL.PRESET_COUNT - 1}
-          className="bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-2xl w-11 h-11 flex items-center justify-center disabled:opacity-30 transition"
+          className="bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-2xl w-11 h-11 flex items-center justify-center disabled:opacity-30 transition"
           title="Próximo Preset"
         >
           +
@@ -123,13 +123,13 @@ export function PresetBar({
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
                 onBlur={handleSaveRename}
                 autoFocus
-                className="bg-[#050f10] text-[#eaf0ea] font-display text-2xl px-3 h-11 w-48 outline outline-2 outline-[#e3b862] uppercase"
+                className="bg-[#060607] text-[#f2efe9] font-display text-2xl px-3 h-11 w-48 outline outline-2 outline-[#d9822b] uppercase"
               />
             </div>
           ) : (
             <button
               onClick={handleStartRename}
-              className="font-display text-2xl sm:text-3xl text-[#eaf0ea] hover:text-[#e3b862] tracking-wide px-2 py-1 transition text-left"
+              className="font-display text-2xl sm:text-3xl text-[#f2efe9] hover:text-[#e5a93c] tracking-wide px-2 py-1 transition text-left"
               title="Clique para renomear"
             >
               {currentPresetName}
@@ -144,8 +144,8 @@ export function PresetBar({
           onClick={onToggleCompare}
           className={`h-11 px-4 font-semibold text-xs uppercase tracking-wider transition ${
             isCompareActive
-              ? 'bg-[#63e0f5] text-[#04191a]'
-              : 'bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea]'
+              ? 'bg-[#e5a93c] text-[#120902]'
+              : 'bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9]'
           }`}
           title="Alternar A/B (Atalho: A)"
         >
@@ -155,21 +155,21 @@ export function PresetBar({
         <button
           onClick={onReload}
           disabled={disabled}
-          className="h-11 px-4 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-semibold text-xs uppercase tracking-wider transition disabled:opacity-35"
+          className="h-11 px-4 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-semibold text-xs uppercase tracking-wider transition disabled:opacity-35"
         >
           SYNC
         </button>
 
         <button
           onClick={onExportJson}
-          className="h-11 px-3.5 bg-[#133332] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] font-semibold text-xs uppercase tracking-wider transition"
+          className="h-11 px-3.5 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#9a968e] hover:text-[#f2efe9] font-semibold text-xs uppercase tracking-wider transition"
         >
           EXPORTAR
         </button>
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="h-11 px-3.5 bg-[#133332] hover:bg-[#1b4544] text-[#a9c0bc] hover:text-[#eaf0ea] font-semibold text-xs uppercase tracking-wider transition"
+          className="h-11 px-3.5 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#9a968e] hover:text-[#f2efe9] font-semibold text-xs uppercase tracking-wider transition"
         >
           IMPORTAR
         </button>
@@ -184,7 +184,7 @@ export function PresetBar({
 
         <button
           onClick={onOpenBackupModal}
-          className="h-11 px-4 bg-[#133332] hover:bg-[#1b4544] text-[#63e0f5] font-semibold text-xs uppercase tracking-wider transition"
+          className="h-11 px-4 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#e5a93c] font-semibold text-xs uppercase tracking-wider transition"
         >
           BACKUP 80
         </button>
@@ -192,11 +192,7 @@ export function PresetBar({
         <button
           onClick={onSaveToFlash}
           disabled={disabled || isSaving}
-          className={`h-11 px-5 font-semibold text-xs uppercase tracking-wider transition disabled:opacity-35 ${
-            hasModifications
-              ? 'bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06] font-bold'
-              : 'bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06]'
-          }`}
+          className="h-11 px-5 bg-[#d9822b] hover:bg-[#e8953f] text-[#120902] font-bold text-xs uppercase tracking-wider transition disabled:opacity-35"
           title="Gravar na Flash (Ctrl+S)"
         >
           {isSaving ? 'GRAVANDO...' : hasModifications ? 'SALVAR*' : 'SALVAR NO PEDAL'}

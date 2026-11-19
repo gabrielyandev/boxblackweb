@@ -8,6 +8,7 @@ import { TapTempoModal } from './components/TapTempoModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { BackupModal } from './components/BackupModal'
 import { CommunityModal } from './components/CommunityModal'
+import { SupportModal } from './components/SupportModal'
 import { BLOCKS, DEFAULT_AMP_NAMES, DEFAULT_CAB_NAMES, PROTOCOL } from './protocol/constants'
 import { transport } from './protocol/transport'
 import {
@@ -72,6 +73,7 @@ export default function App() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
   const [isBackupOpen, setIsBackupOpen] = useState(false)
   const [isCommunityOpen, setIsCommunityOpen] = useState(false)
+  const [isSupportOpen, setIsSupportOpen] = useState(false)
 
   const blockRefs = useRef({})
   const slotDumpResolvers = useRef({})
@@ -546,7 +548,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#071819] text-[#eaf0ea] selection:bg-[#e3b862] selection:text-[#231a06]">
+    <div className="min-h-screen flex flex-col bg-[#0b0b0c] text-[#f2efe9] selection:bg-[#d9822b] selection:text-[#120902]">
       {/* Top Rack Header */}
       <Header
         connectionState={connectionState}
@@ -559,6 +561,7 @@ export default function App() {
         onOpenTapTempo={() => setIsTapTempoOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onOpenCommunity={() => setIsCommunityOpen(true)}
+        onOpenSupport={() => setIsSupportOpen(true)}
       />
 
       {/* Main Workspace */}
@@ -626,25 +629,44 @@ export default function App() {
       </main>
 
       {/* Bottom Status Strip */}
-      <footer className="bg-[#050f10] px-4 py-2 flex items-center justify-between text-xs select-none">
+      <footer className="bg-[#060607] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs select-none">
         <div className="flex items-center gap-2.5">
           <span
             className={`w-2.5 h-2.5 rounded-full ${
-              connectionState.state === 'connected' ? 'bg-[#63e0f5]' : 'bg-[#3d5654]'
+              connectionState.state === 'connected' ? 'bg-[#e5a93c]' : 'bg-[#38383e]'
             }`}
           />
-          <span className="font-semibold text-[#a9c0bc] uppercase tracking-wider text-[11px]">
+          <span className="font-semibold text-[#9a968e] uppercase tracking-wider text-[11px]">
             {statusMessage}
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[#a9c0bc]">
-          <span className="hidden sm:inline font-display text-base tracking-wider">
-            BLACKBOX · FW V23
-          </span>
+        <div className="flex flex-wrap items-center gap-4 text-[#9a968e] text-[11px] font-semibold uppercase tracking-wider">
+          <a
+            href="https://github.com/gabrielyandev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[#f2efe9] transition"
+          >
+            POR GABRIEL YAN (@GABRIELYANDEV)
+          </a>
+          <a
+            href="https://github.com/gabrielyandev/boxblackweb"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[#e5a93c] transition"
+          >
+            GITHUB ↗
+          </a>
+          <button
+            onClick={() => setIsSupportOpen(true)}
+            className="text-[#d9822b] hover:text-[#e8953f] font-bold transition"
+          >
+            CONTRIBUIR / APOIAR
+          </button>
           <button
             onClick={() => setIsShortcutsOpen(true)}
-            className="font-semibold text-[11px] uppercase tracking-wider hover:text-[#e3b862] transition"
+            className="hover:text-[#f2efe9] transition"
           >
             ATALHOS
           </button>
@@ -673,6 +695,10 @@ export default function App() {
         onClose={() => setIsCommunityOpen(false)}
         ampNames={ampNames}
         cabNames={cabNames}
+      />
+      <SupportModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
       />
     </div>
   )

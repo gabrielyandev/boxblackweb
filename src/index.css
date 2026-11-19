@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --bg: #071819;
-  --surface: #0e2828;
-  --surface2: #133332;
-  --well: #050f10;
-  --ink: #eaf0ea;
-  --muted: #a9c0bc;
-  --accent: #e3b862;
-  --accent-ink: #231a06;
-  --rig: #63e0f5;
-  --field: #2aa3a6;
+  --bg: #0b0b0c;
+  --surface: #141416;
+  --surface2: #1e1e22;
+  --well: #060607;
+  --ink: #f2efe9;
+  --muted: #9a968e;
+  --accent: #d9822b;
+  --accent-ink: #120902;
+  --rig: #e5a93c;
+  --field: #b86b1f;
   --led: #e5484d;
   --f-d: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
   --f-t: 'Public Sans', system-ui, -apple-system, sans-serif;

@@ -14,16 +14,16 @@ export function ShortcutsModal({ isOpen, onClose }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
-      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-md p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+      <div className="bg-[#141416] border-t-4 border-[#d9822b] w-full max-w-md p-6 relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-lg transition"
         >
           ✕
         </button>
 
-        <h2 className="font-display text-3xl text-[#eaf0ea] mb-5">
+        <h2 className="font-display text-3xl text-[#f2efe9] mb-5">
           ATALHOS
         </h2>
 
@@ -31,12 +31,12 @@ export function ShortcutsModal({ isOpen, onClose }) {
           {shortcuts.map((sc, i) => (
             <div
               key={i}
-              className="flex items-center justify-between px-3 py-2.5 bg-[#050f10] text-xs"
+              className="flex items-center justify-between px-3 py-2.5 bg-[#060607] text-xs"
             >
-              <kbd className="font-display text-lg text-[#e3b862] tracking-wider">
+              <kbd className="font-display text-lg text-[#e5a93c] tracking-wider">
                 {sc.key}
               </kbd>
-              <span className="text-[#eaf0ea] font-semibold">{sc.desc}</span>
+              <span className="text-[#f2efe9] font-semibold">{sc.desc}</span>
             </div>
           ))}
         </div>

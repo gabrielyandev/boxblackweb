@@ -72,63 +72,63 @@ export function BackupModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#041011]/85 p-4">
-      <div className="bg-[#0e2828] border-t-4 border-[#e3b862] w-full max-w-lg p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+      <div className="bg-[#141416] border-t-4 border-[#d9822b] w-full max-w-lg p-6 relative">
         <button
           onClick={onClose}
           disabled={isProcessing}
-          className="absolute top-4 right-4 px-2.5 py-1 bg-[#133332] hover:bg-[#1b4544] text-[#eaf0ea] font-display text-lg transition disabled:opacity-30"
+          className="absolute top-4 right-4 px-2.5 py-1 bg-[#1e1e22] hover:bg-[#2a2a30] text-[#f2efe9] font-display text-lg transition disabled:opacity-30"
         >
           ✕
         </button>
 
-        <h2 className="font-display text-3xl text-[#eaf0ea] mb-5">
+        <h2 className="font-display text-3xl text-[#f2efe9] mb-5">
           BACKUP & RESTAURAÇÃO · 80 SLOTS
         </h2>
 
         {isProcessing ? (
-          <div className="my-4 p-6 bg-[#05080a] flex flex-col items-center gap-3">
-            <span className="font-display text-2xl text-[#63e0f5]">{statusText}</span>
-            <div className="w-full bg-[#133332] h-3">
+          <div className="my-4 p-6 bg-[#060607] flex flex-col items-center gap-3">
+            <span className="font-display text-2xl text-[#e5a93c]">{statusText}</span>
+            <div className="w-full bg-[#1e1e22] h-3">
               <div
-                className="bg-[#e3b862] h-full transition-all duration-150"
+                className="bg-[#d9822b] h-full transition-all duration-150"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="font-display text-xl text-[#eaf0ea] tabular-nums">{progress}%</span>
+            <span className="font-display text-xl text-[#f2efe9] tabular-nums">{progress}%</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-[#133332] p-4 flex flex-col justify-between gap-4">
+            <div className="bg-[#1e1e22] p-4 flex flex-col justify-between gap-4">
               <div>
-                <h3 className="font-display text-2xl text-[#eaf0ea] mb-1">
+                <h3 className="font-display text-2xl text-[#f2efe9] mb-1">
                   EXPORTAR TUDO
                 </h3>
-                <p className="text-xs text-[#a9c0bc]">
+                <p className="text-xs text-[#9a968e]">
                   Dump completo P01–P80 em arquivo JSON.
                 </p>
               </div>
               <button
                 onClick={handleFullBackup}
                 disabled={!isConnected}
-                className="w-full h-11 bg-[#e3b862] hover:bg-[#f0c97a] text-[#231a06] font-bold text-xs uppercase tracking-wider transition disabled:opacity-35"
+                className="w-full h-11 bg-[#d9822b] hover:bg-[#e8953f] text-[#120902] font-bold text-xs uppercase tracking-wider transition disabled:opacity-35"
               >
                 BAIXAR BACKUP
               </button>
             </div>
 
-            <div className="bg-[#133332] p-4 flex flex-col justify-between gap-4">
+            <div className="bg-[#1e1e22] p-4 flex flex-col justify-between gap-4">
               <div>
-                <h3 className="font-display text-2xl text-[#eaf0ea] mb-1">
+                <h3 className="font-display text-2xl text-[#f2efe9] mb-1">
                   RESTAURAR JSON
                 </h3>
-                <p className="text-xs text-[#a9c0bc]">
+                <p className="text-xs text-[#9a968e]">
                   Grava os 80 slots direto na memória Flash.
                 </p>
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full h-11 bg-[#071819] hover:bg-[#050f10] text-[#63e0f5] font-bold text-xs uppercase tracking-wider transition"
+                className="w-full h-11 bg-[#0b0b0c] hover:bg-[#060607] text-[#e5a93c] font-bold text-xs uppercase tracking-wider transition"
               >
                 SELECIONAR ARQUIVO
               </button>
