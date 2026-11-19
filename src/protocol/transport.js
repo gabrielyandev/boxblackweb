@@ -27,6 +27,8 @@ export class BlackBoxTransport {
     this.rxBuffer = []
     this.midiRxBuffer = []
     this.ackResolvers = []
+    this.writeQueue = Promise.resolve()
+    this.lastRxTime = 0
   }
 
   notifyStatus(status) {
@@ -120,8 +122,10 @@ export class BlackBoxTransport {
         throw new Error('Nenhum dispositivo MIDI encontrado via USB. Verifique se o cabo está conectado.')
       }
 
-      const input = inputs.find(i => /blackbox|m-vave|cuvave/i.test(i.name)) || inputs[0]
-      const output = outputs.find(o => /blackbox|m-vave|cuvave/i.test(o.name)) || outputs[0]
+      const matchPort = (p) => /blackbox|m-vave|cuvave|jieli|composite/i.test(`${p.name} ${p.manufacturer || ''}`)
+      const isNotThrough = (p) => !/midi through/i.test(p.name || '')
+      const input = inputs.find(matchPort) || inputs.find(isNotThrough) || inputs[0]
+      const output = outputs.find(matchPort) || outputs.find(isNotThrough) || outputs[0]
 
       this.midiInput = input
       this.midiOutput = output
@@ -184,25 +188,53 @@ export class BlackBoxTransport {
       throw new Error('Dispositivo não está conectado.')
     }
 
-    if (this.type === 'ble') {
-      if (!this.txChar) throw new Error('Canal BLE TX não inicializado.')
-      const mtuChunk = 240
-      for (let offset = 0; offset < rawFrame.length; offset += mtuChunk) {
-        const slice = rawFrame.subarray(offset, Math.min(rawFrame.length, offset + mtuChunk))
-        if (this.txChar.writeValueWithoutResponse) {
-          await this.txChar.writeValueWithoutResponse(slice)
-        } else {
-          await this.txChar.writeValue(slice)
-        }
-        if (offset + mtuChunk < rawFrame.length) {
-          await new Promise(resolve => setTimeout(resolve, 15))
-        }
+    const writeBleSlice = async (slice) => {
+      if (this.txChar.writeValueWithoutResponse) {
+        await this.txChar.writeValueWithoutResponse(slice)
+      } else {
+        await this.txChar.writeValue(slice)
       }
-    } else if (this.type === 'midi') {
-      if (!this.midiOutput) throw new Error('Canal MIDI Out não inicializado.')
-      const wrapped = sysexWrap(rawFrame)
-      this.midiOutput.send(wrapped)
     }
+
+    const task = async () => {
+      if (!this.connected) {
+        throw new Error('Dispositivo não está conectado.')
+      }
+
+      if (this.type === 'ble') {
+        if (!this.txChar) throw new Error('Canal BLE TX não inicializado.')
+        const mtuChunk = 240
+        for (let offset = 0; offset < rawFrame.length; offset += mtuChunk) {
+          const slice = rawFrame.subarray(offset, Math.min(rawFrame.length, offset + mtuChunk))
+          try {
+            await writeBleSlice(slice)
+          } catch (err) {
+            if (slice.length > 20) {
+              for (let sub = 0; sub < slice.length; sub += 20) {
+                const subSlice = slice.subarray(sub, Math.min(slice.length, sub + 20))
+                await writeBleSlice(subSlice)
+                if (sub + 20 < slice.length) {
+                  await new Promise(resolve => setTimeout(resolve, 10))
+                }
+              }
+            } else {
+              throw err
+            }
+          }
+          if (offset + mtuChunk < rawFrame.length) {
+            await new Promise(resolve => setTimeout(resolve, 15))
+          }
+        }
+      } else if (this.type === 'midi') {
+        if (!this.midiOutput) throw new Error('Canal MIDI Out não inicializado.')
+        const wrapped = sysexWrap(rawFrame)
+        this.midiOutput.send(wrapped)
+      }
+    }
+
+    const result = this.writeQueue.then(task, task)
+    this.writeQueue = result.catch(() => {})
+    return result
   }
 
   /**
@@ -257,23 +289,64 @@ export class BlackBoxTransport {
   handleIncomingRaw(chunk) {
     if (!chunk || chunk.length === 0) return
 
+    const now = Date.now()
+    if (this.rxBuffer.length > 0 && now - this.lastRxTime > 300) {
+      this.rxBuffer = []
+    }
+    this.lastRxTime = now
+
     for (let i = 0; i < chunk.length; i++) {
       this.rxBuffer.push(chunk[i])
     }
 
-    while (this.rxBuffer.length >= 2) {
-      // Align to 0x00, 0x59 magic header
-      if (this.rxBuffer[0] !== 0x00 || this.rxBuffer[1] !== 0x59) {
+    // Extract any compact 8-byte ACK immediately so stale/partial buffers cannot block an ACK
+    const ackSeq = PROTOCOL.ACK
+    while (this.rxBuffer.length >= ackSeq.length) {
+      let ackIdx = -1
+      for (let i = 0; i <= this.rxBuffer.length - ackSeq.length; i++) {
+        let matched = true
+        for (let k = 0; k < ackSeq.length; k++) {
+          if (this.rxBuffer[i + k] !== ackSeq[k]) {
+            matched = false
+            break
+          }
+        }
+        if (matched) {
+          ackIdx = i
+          break
+        }
+      }
+      if (ackIdx === -1) break
+      const ackBytes = new Uint8Array(this.rxBuffer.splice(ackIdx, ackSeq.length))
+      const pending = this.ackResolvers.shift()
+      if (pending) pending.resolve()
+      this.notifyMessage({
+        raw: ackBytes,
+        parsed: { type: 'ACK' },
+      })
+    }
+
+    const isValidMagic = (b0, b1, b2) =>
+      b0 === 0x00 &&
+      b1 === 0x59 &&
+      (b2 === 0x23 || b2 === 0x22 || b2 === 0x00 || b2 === 0x11 || b2 === 0x21)
+
+    while (this.rxBuffer.length >= 3) {
+      // Align to valid 3-byte magic header
+      if (!isValidMagic(this.rxBuffer[0], this.rxBuffer[1], this.rxBuffer[2])) {
         let foundIdx = -1
-        for (let i = 1; i < this.rxBuffer.length - 1; i++) {
-          if (this.rxBuffer[i] === 0x00 && this.rxBuffer[i + 1] === 0x59) {
+        for (let i = 1; i <= this.rxBuffer.length - 3; i++) {
+          if (isValidMagic(this.rxBuffer[i], this.rxBuffer[i + 1], this.rxBuffer[i + 2])) {
             foundIdx = i
             break
           }
         }
         if (foundIdx === -1) {
-          // Keep trailing 0x00 in case 0x59 is the first byte of the next chunk
-          if (this.rxBuffer[this.rxBuffer.length - 1] === 0x00) {
+          // Preserve trailing 0x00 or 0x00 0x59 in case header spans fragments
+          const len = this.rxBuffer.length
+          if (len >= 2 && this.rxBuffer[len - 2] === 0x00 && this.rxBuffer[len - 1] === 0x59) {
+            this.rxBuffer = [0x00, 0x59]
+          } else if (this.rxBuffer[len - 1] === 0x00) {
             this.rxBuffer = [0x00]
           } else {
             this.rxBuffer = []
@@ -361,6 +434,8 @@ export class BlackBoxTransport {
 
     this.rxBuffer = []
     this.midiRxBuffer = []
+    this.lastRxTime = 0
+    this.writeQueue = Promise.resolve()
     while (this.ackResolvers.length > 0) {
       const pending = this.ackResolvers.shift()
       pending.reject(new Error('Conexão encerrada.'))

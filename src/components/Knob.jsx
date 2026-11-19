@@ -34,10 +34,12 @@ export function Knob({
   const [editValue, setEditValue] = useState(String(value))
   const startYRef = useRef(0)
   const startValRef = useRef(value)
+  const lastValRef = useRef(value)
   const inputRef = useRef(null)
 
   useEffect(() => {
     setEditValue(String(value))
+    lastValRef.current = value
   }, [value])
 
   useEffect(() => {
@@ -56,7 +58,8 @@ export function Knob({
     const deltaVal = (deltaY / 140) * range
     let newVal = Math.round(startValRef.current + deltaVal)
     newVal = Math.max(min, Math.min(max, newVal))
-    if (onChange) {
+    if (onChange && newVal !== lastValRef.current) {
+      lastValRef.current = newVal
       onChange(newVal)
     }
   }
@@ -66,6 +69,7 @@ export function Knob({
     setIsDragging(true)
     startYRef.current = e.clientY
     startValRef.current = value
+    lastValRef.current = value
 
     const handleMouseMove = (moveEvent) => {
       updateValueFromDelta(startYRef.current - moveEvent.clientY)
@@ -86,6 +90,7 @@ export function Knob({
     setIsDragging(true)
     startYRef.current = e.touches[0].clientY
     startValRef.current = value
+    lastValRef.current = value
 
     const handleTouchMove = (moveEvent) => {
       if (moveEvent.touches.length !== 1) return

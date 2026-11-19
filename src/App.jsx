@@ -83,6 +83,17 @@ export default function App() {
 
   const blockRefs = useRef({})
   const slotDumpResolvers = useRef({})
+  const currentPresetIdRef = useRef(0)
+  const rawPresetRef = useRef(null)
+  const lastUiEditTimeRef = useRef(0)
+  const isSavingRef = useRef(false)
+  const forceRamSyncRef = useRef(false)
+  const modelSyncOnlyRef = useRef(false)
+  const knobThrottleRef = useRef({})
+
+  useEffect(() => {
+    currentPresetIdRef.current = currentPresetId
+  }, [currentPresetId])
 
   const showStatus = (msg) => {
     setStatusMessage(msg)
@@ -95,6 +106,7 @@ export default function App() {
       if (status.state === 'connected') {
         showStatus(`Conectado ao ${status.deviceName} via ${status.method === 'ble' ? 'Bluetooth BLE' : 'USB SysEx'}`)
       } else if (status.state === 'disconnected') {
+        rawPresetRef.current = null
         showStatus('Desconectado')
       }
     })
@@ -103,15 +115,38 @@ export default function App() {
       if (!parsed) return
 
       if (parsed.type === 'PRESET_SYNC') {
-        setCurrentPresetId(parsed.presetId)
+        if (parsed.presetId !== currentPresetIdRef.current) {
+          currentPresetIdRef.current = parsed.presetId
+          setCurrentPresetId(parsed.presetId)
+          setIsCompareActive(false)
+          setTimeout(() => {
+            if (transport.connected && !isSavingRef.current) {
+              forceRamSyncRef.current = true
+              modelSyncOnlyRef.current = false
+              transport.sendRaw(cmdRamDump()).catch(() => {})
+            }
+          }, 200)
+        }
       } else if (parsed.type === 'RAM_DUMP' && parsed.preset) {
+        const isForced = forceRamSyncRef.current
+        if (!isForced && Date.now() - lastUiEditTimeRef.current < 1000) {
+          return
+        }
+        forceRamSyncRef.current = false
+        if (parsed.rawPreset) {
+          rawPresetRef.current = new Uint8Array(parsed.rawPreset)
+        }
         setMasterVolume(parsed.preset.masterVolume)
         setRouting(parsed.preset.routing)
         setBlocksState(parsed.preset.blocks)
-        setOriginalPreset(JSON.parse(JSON.stringify(parsed.preset)))
-        setIsCompareActive(false)
-        setHasModifications(false)
-        showStatus(`P${String(currentPresetId + 1).padStart(2, '0')} sincronizado com sucesso`)
+        if (modelSyncOnlyRef.current) {
+          modelSyncOnlyRef.current = false
+        } else {
+          setOriginalPreset(JSON.parse(JSON.stringify(parsed.preset)))
+          setIsCompareActive(false)
+          setHasModifications(false)
+          showStatus(`P${String(currentPresetIdRef.current + 1).padStart(2, '0')} sincronizado com sucesso`)
+        }
       } else if (parsed.type === 'AMP_NAMES' && parsed.names) {
         setAmpNames(parsed.names)
         showStatus('Perfis NAM da pedaleira carregados!')
@@ -131,23 +166,36 @@ export default function App() {
       unsubStatus()
       unsubMsg()
     }
-  }, [currentPresetId])
+  }, [])
+
+  // Background poll for physical footswitch preset changes on pedal
+  useEffect(() => {
+    if (connectionState.state !== 'connected') return
+    const intervalId = setInterval(() => {
+      if (
+        transport.connected &&
+        !isSavingRef.current &&
+        Date.now() - lastUiEditTimeRef.current > 1500
+      ) {
+        transport.sendRaw(cmdPresetSync()).catch(() => {})
+      }
+    }, 3000)
+
+    return () => clearInterval(intervalId)
+  }, [connectionState.state])
 
   // Initial queries on connect
   const syncPedalData = useCallback(async () => {
     try {
       await transport.sendRaw(cmdPresetSync())
+      await new Promise((r) => setTimeout(r, 220))
+      forceRamSyncRef.current = true
+      modelSyncOnlyRef.current = false
       await transport.sendRaw(cmdRamDump())
-      // Query Flash custom NAM and IR names
-      setTimeout(async () => {
-        try {
-          await transport.sendRaw(cmdReadAmpNames())
-          await new Promise((r) => setTimeout(r, 180))
-          await transport.sendRaw(cmdReadCabNames())
-        } catch (e) {
-          console.warn('Leitura de nomes de AMP/CAB:', e)
-        }
-      }, 400)
+      await new Promise((r) => setTimeout(r, 350))
+      await transport.sendRaw(cmdReadAmpNames())
+      await new Promise((r) => setTimeout(r, 350))
+      await transport.sendRaw(cmdReadCabNames())
     } catch (e) {
       console.error('Falha ao sincronizar inicial:', e)
     }
@@ -177,11 +225,34 @@ export default function App() {
     transport.disconnect()
   }
 
+  const flushPendingKnobWrites = async () => {
+    const entries = Object.entries(knobThrottleRef.current)
+    const pendingSends = []
+    for (const [addrStr, entry] of entries) {
+      if (entry && entry.timer) {
+        clearTimeout(entry.timer)
+        const val = entry.pendingVal
+        knobThrottleRef.current[addrStr] = { lastSent: Date.now(), pendingVal: null, timer: null }
+        if (transport.connected && val !== null && val !== undefined) {
+          pendingSends.push(
+            transport.sendRaw(cmdWriteKnob(Number(addrStr), val)).catch(() => {})
+          )
+        }
+      }
+    }
+    if (pendingSends.length > 0) {
+      await Promise.all(pendingSends)
+    }
+    await transport.writeQueue
+    await new Promise((r) => setTimeout(r, 50))
+  }
+
   // Parameter updates
   const handleToggle = async (blockKey) => {
     const block = BLOCKS.find((b) => b.key === blockKey)
     if (!block) return
 
+    lastUiEditTimeRef.current = Date.now()
     const newEnabled = !blocksState[blockKey].enabled
     setBlocksState((prev) => ({
       ...prev,
@@ -202,6 +273,7 @@ export default function App() {
     const block = BLOCKS.find((b) => b.key === blockKey)
     if (!block) return
 
+    lastUiEditTimeRef.current = Date.now()
     setBlocksState((prev) => ({
       ...prev,
       [blockKey]: { ...prev[blockKey], modelIndex },
@@ -211,6 +283,13 @@ export default function App() {
     if (transport.connected) {
       try {
         await transport.sendRaw(cmdWriteModel(block.modelAddr, modelIndex))
+        setTimeout(() => {
+          if (transport.connected && !isSavingRef.current) {
+            forceRamSyncRef.current = true
+            modelSyncOnlyRef.current = true
+            transport.sendRaw(cmdRamDump()).catch(() => {})
+          }
+        }, 180)
       } catch (err) {
         console.error('Erro ao enviar modelo:', err)
       }
@@ -221,6 +300,7 @@ export default function App() {
     const block = BLOCKS.find((b) => b.key === blockKey)
     if (!block) return
 
+    lastUiEditTimeRef.current = Date.now()
     setBlocksState((prev) => {
       const currentKnobs = [...prev[blockKey].knobs]
       currentKnobs[slotIndex] = value
@@ -233,16 +313,36 @@ export default function App() {
 
     if (transport.connected) {
       const knobAddr = block.knobBase + slotIndex * 2
-      try {
-        await transport.sendRaw(cmdWriteKnob(knobAddr, value))
-      } catch (err) {
-        console.error('Erro ao enviar knob:', err)
+      const entry = knobThrottleRef.current[knobAddr]
+      const now = Date.now()
+      if (entry && entry.timer) {
+        clearTimeout(entry.timer)
+        entry.timer = null
+      }
+      const lastSent = entry?.lastSent ?? 0
+      const sendNow = () => {
+        knobThrottleRef.current[knobAddr] = { lastSent: Date.now(), pendingVal: null, timer: null }
+        if (transport.connected) {
+          transport.sendRaw(cmdWriteKnob(knobAddr, value)).catch((err) => {
+            console.error('Erro ao enviar knob:', err)
+          })
+        }
+      }
+
+      if (now - lastSent >= 35) {
+        sendNow()
+      } else {
+        const delay = Math.max(5, 35 - (now - lastSent))
+        const timer = setTimeout(sendNow, delay)
+        knobThrottleRef.current[knobAddr] = { lastSent, pendingVal: value, timer }
       }
     }
   }
 
   const handleMasterVolumeChange = async (val) => {
+    lastUiEditTimeRef.current = Date.now()
     setMasterVolume(val)
+    setHasModifications(true)
     if (transport.connected) {
       try {
         await transport.sendRaw(cmdWritePatchVolume(val))
@@ -254,6 +354,7 @@ export default function App() {
 
   const handleMoveBlock = async (fromIndex, toIndex) => {
     if (toIndex < 0 || toIndex >= routing.length) return
+    lastUiEditTimeRef.current = Date.now()
     const newRouting = [...routing]
     const [moved] = newRouting.splice(fromIndex, 1)
     newRouting.splice(toIndex, 0, moved)
@@ -271,14 +372,19 @@ export default function App() {
 
   // Preset Selection
   const handleSelectPreset = async (presetId) => {
+    currentPresetIdRef.current = presetId
     setCurrentPresetId(presetId)
     setIsCompareActive(false)
     if (transport.connected) {
       try {
         await transport.sendRaw(cmdLoadPreset(presetId))
-        setTimeout(async () => {
-          await transport.sendRaw(cmdRamDump())
-        }, 150)
+        setTimeout(() => {
+          if (transport.connected && !isSavingRef.current) {
+            forceRamSyncRef.current = true
+            modelSyncOnlyRef.current = false
+            transport.sendRaw(cmdRamDump()).catch(() => {})
+          }
+        }, 450)
       } catch (err) {
         console.error('Erro ao carregar preset:', err)
       }
@@ -288,6 +394,8 @@ export default function App() {
   const handleReloadFromPedal = async () => {
     if (!transport.connected) return
     try {
+      forceRamSyncRef.current = true
+      modelSyncOnlyRef.current = false
       await transport.sendRaw(cmdRamDump())
     } catch (err) {
       alert('Erro ao sincronizar: ' + err.message)
@@ -300,21 +408,59 @@ export default function App() {
       return
     }
 
+    const targetPresetId = currentPresetIdRef.current
     setIsSaving(true)
+    isSavingRef.current = true
+    lastUiEditTimeRef.current = Date.now()
+
     try {
-      const serialized = serializePreset({
+      await flushPendingKnobWrites()
+      const snapshot = {
         masterVolume,
         routing,
         blocks: blocksState,
-      })
-      await transport.sendRaw(cmdWriteFlashPreset(currentPresetId, serialized))
-      setOriginalPreset(JSON.parse(JSON.stringify({ masterVolume, routing, blocks: blocksState })))
+      }
+      const serialized = serializePreset(snapshot, rawPresetRef.current)
+      rawPresetRef.current = new Uint8Array(serialized)
+
+      const frame = cmdWriteFlashPreset(targetPresetId, serialized)
+      try {
+        await transport.sendAndWaitAck(frame, 3500)
+      } catch {
+        // Retry once if the first ACK timed out on BLE/USB
+        await transport.sendAndWaitAck(frame, 3500)
+      }
+
+      setOriginalPreset(JSON.parse(JSON.stringify(snapshot)))
+      setIsCompareActive(false)
       setHasModifications(false)
-      showStatus(`Preset P${String(currentPresetId + 1).padStart(2, '0')} gravado na Flash com sucesso!`)
+      showStatus(`Preset P${String(targetPresetId + 1).padStart(2, '0')} gravado na Flash com sucesso!`)
     } catch (err) {
       alert('Erro ao salvar no pedal: ' + err.message)
     } finally {
+      isSavingRef.current = false
       setIsSaving(false)
+    }
+  }
+
+  const writeLivePreset = async (targetPreset) => {
+    if (!transport.connected || !targetPreset?.blocks) return
+    lastUiEditTimeRef.current = Date.now()
+    for (let i = 0; i < BLOCKS.length; i++) {
+      const b = BLOCKS[i]
+      const blkState = targetPreset.blocks[b.key]
+      if (!blkState) continue
+      await transport.sendRaw(cmdWriteToggle(b.toggleAddr, blkState.enabled))
+      await transport.sendRaw(cmdWriteModel(b.modelAddr, blkState.modelIndex))
+      for (let k = 0; k < 6; k++) {
+        await transport.sendRaw(cmdWriteKnob(b.knobBase + k * 2, blkState.knobs?.[k] || 0))
+      }
+    }
+    if (Array.isArray(targetPreset.routing) && targetPreset.routing.length === 6) {
+      await transport.sendRaw(cmdWriteRouting(targetPreset.routing))
+    }
+    if (typeof targetPreset.masterVolume === 'number') {
+      await transport.sendRaw(cmdWritePatchVolume(targetPreset.masterVolume))
     }
   }
 
@@ -330,19 +476,7 @@ export default function App() {
 
     if (transport.connected) {
       try {
-        const serialized = serializePreset(targetPreset)
-        // Write entire live RAM preset
-        for (let i = 0; i < BLOCKS.length; i++) {
-          const b = BLOCKS[i]
-          const blkState = targetPreset.blocks[b.key]
-          await transport.sendRaw(cmdWriteToggle(b.toggleAddr, blkState.enabled))
-          await transport.sendRaw(cmdWriteModel(b.modelAddr, blkState.modelIndex))
-          for (let k = 0; k < 6; k++) {
-            await transport.sendRaw(cmdWriteKnob(b.knobBase + k * 2, blkState.knobs[k] || 0))
-          }
-        }
-        await transport.sendRaw(cmdWriteRouting(targetPreset.routing))
-        await transport.sendRaw(cmdWritePatchVolume(targetPreset.masterVolume))
+        await writeLivePreset(targetPreset)
       } catch (err) {
         console.error('Erro no A/B Compare:', err)
       }
@@ -362,6 +496,7 @@ export default function App() {
     const block = BLOCKS.find((b) => b.key === key)
     if (!block) return
 
+    lastUiEditTimeRef.current = Date.now()
     const incoming = clipboardBlock.state
     setBlocksState((prev) => ({
       ...prev,
@@ -417,12 +552,29 @@ export default function App() {
     showStatus('Preset exportado com sucesso')
   }
 
-  const handleImportJson = (json) => {
+  const handleImportJson = async (json) => {
+    lastUiEditTimeRef.current = Date.now()
+    const nextVolume = typeof json.masterVolume === 'number' ? json.masterVolume : masterVolume
+    const nextRouting = Array.isArray(json.routing) && json.routing.length === 6 ? json.routing : routing
+    const nextBlocks = json.blocks || blocksState
+
     if (typeof json.masterVolume === 'number') setMasterVolume(json.masterVolume)
     if (Array.isArray(json.routing) && json.routing.length === 6) setRouting(json.routing)
     if (json.blocks) setBlocksState(json.blocks)
     if (json.name) handleRenamePreset(currentPresetId, json.name)
     setHasModifications(true)
+
+    if (transport.connected) {
+      try {
+        await writeLivePreset({
+          masterVolume: nextVolume,
+          routing: nextRouting,
+          blocks: nextBlocks,
+        })
+      } catch (err) {
+        console.error('Erro ao aplicar JSON importado na RAM:', err)
+      }
+    }
     showStatus('Preset importado! Clique em Salvar para gravar no pedal.')
   }
 
@@ -652,7 +804,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPresetId, masterVolume, blocksState, originalPreset, isCompareActive])
+  }, [currentPresetId, masterVolume, routing, blocksState, originalPreset, isCompareActive])
 
   const scrollToBlock = (key) => {
     const el = blockRefs.current[key]
@@ -692,7 +844,7 @@ export default function App() {
           onExportJson={handleExportJson}
           onImportJson={handleImportJson}
           onOpenBackupModal={() => setIsBackupOpen(true)}
-          disabled={!transport.connected}
+          disabled={connectionState.state !== 'connected'}
           isSaving={isSaving}
           isCompareActive={isCompareActive}
           onToggleCompare={handleToggleCompare}

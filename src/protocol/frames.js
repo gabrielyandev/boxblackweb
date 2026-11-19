@@ -329,6 +329,7 @@ export function parseFrame(raw) {
   }
 
   const magic = [raw[0], raw[1], raw[2]]
+  const isReadReply = magic[0] === 0x00 && magic[1] === 0x59 && magic[2] === 0x23
   const length = raw[3] | (raw[4] << 8)
   const space = raw[5] | (raw[6] << 8)
   const address = (raw[7] | (raw[8] << 8) | (raw[9] << 16) | (raw[10] << 24)) >>> 0
@@ -337,7 +338,7 @@ export function parseFrame(raw) {
   const checksum = raw[raw.length - 1]
   const checksumOk = verifyChecksum(raw)
 
-  if (address === PROTOCOL.ADDR_CURRENT_PRESET && payload.length >= 1) {
+  if (isReadReply && address === PROTOCOL.ADDR_CURRENT_PRESET && payload.length >= 1) {
     return {
       type: 'PRESET_SYNC',
       presetId: payload[0],
@@ -346,7 +347,7 @@ export function parseFrame(raw) {
     }
   }
 
-  if (address === PROTOCOL.ADDR_LIVE_RAM && payload.length === PROTOCOL.PRESET_SIZE) {
+  if (isReadReply && address === PROTOCOL.ADDR_LIVE_RAM && payload.length === PROTOCOL.PRESET_SIZE) {
     return {
       type: 'RAM_DUMP',
       preset: parseRamDump(payload),
@@ -355,7 +356,7 @@ export function parseFrame(raw) {
     }
   }
 
-  if (address === PROTOCOL.ADDR_AMP_NAMES && payload.length >= 280) {
+  if (isReadReply && address === PROTOCOL.ADDR_AMP_NAMES && payload.length >= 280) {
     return {
       type: 'AMP_NAMES',
       names: parseStringTable(payload, DEFAULT_AMP_NAMES),
@@ -364,7 +365,7 @@ export function parseFrame(raw) {
     }
   }
 
-  if (address === PROTOCOL.ADDR_CAB_NAMES && payload.length >= 280) {
+  if (isReadReply && address === PROTOCOL.ADDR_CAB_NAMES && payload.length >= 280) {
     return {
       type: 'CAB_NAMES',
       names: parseStringTable(payload, DEFAULT_CAB_NAMES),
@@ -374,7 +375,8 @@ export function parseFrame(raw) {
   }
 
   // Preset dump from Flash memory slot
-  const isPresetSlot = address >= PROTOCOL.ADDR_PRESET_BASE &&
+  const isPresetSlot = isReadReply &&
+    address >= PROTOCOL.ADDR_PRESET_BASE &&
     address < PROTOCOL.ADDR_PRESET_BASE + PROTOCOL.PRESET_COUNT * PROTOCOL.PRESET_SIZE &&
     payload.length === PROTOCOL.PRESET_SIZE
 
@@ -438,9 +440,15 @@ export function parseRamDump(dump) {
 
 /**
  * Re-serialize editable preset state back into 92 bytes
+ * @param {object} presetState
+ * @param {Uint8Array|null} [baseRawPreset=null]
+ * @returns {Uint8Array}
  */
-export function serializePreset(presetState) {
+export function serializePreset(presetState, baseRawPreset = null) {
   const dump = new Uint8Array(PROTOCOL.PRESET_SIZE)
+  if (baseRawPreset && baseRawPreset.length === PROTOCOL.PRESET_SIZE) {
+    dump.set(baseRawPreset)
+  }
 
   // Master Volume
   dump[0] = presetState.masterVolume & 0xFF

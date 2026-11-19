@@ -60,6 +60,7 @@ export const BLOCKS = [
     toggleAddr: 0x08,
     modelAddr: 0x0E,
     knobBase: 0x14,
+    isDynamic: true,
     models: ['Noise Gate++', 'Boost', 'Compress', 'AI Gate MS'],
     knobs: [
       ['Gate', GHOST, GHOST, GHOST, GHOST, GHOST],
@@ -90,6 +91,7 @@ export const BLOCKS = [
     toggleAddr: 0x0A,
     modelAddr: 0x10,
     knobBase: 0x2C,
+    isDynamic: true,
     models: ['Chorus', 'Phaser', 'Tremolo', 'Flanger', 'Vibrato', 'Univibe', 'Autofilter'],
     knobs: [
       ['Speed', 'Depth', 'Mix', GHOST, GHOST, GHOST],
@@ -109,6 +111,7 @@ export const BLOCKS = [
     toggleAddr: 0x0B,
     modelAddr: 0x11,
     knobBase: 0x38,
+    isDynamic: true,
     models: ['Analog', 'Duck', 'Dtape', 'Dual', 'Lofi'],
     knobs: [
       ['Time', 'Feedback', 'Mix', 'Phaser', 'Pitch', GHOST],
@@ -126,6 +129,7 @@ export const BLOCKS = [
     toggleAddr: 0x0C,
     modelAddr: 0x12,
     knobBase: 0x44,
+    isDynamic: true,
     models: ['Room', 'Hall', 'Swell', 'Spring', 'Shimmer', 'Cloud'],
     knobs: [
       ['Decay', 'Mix', 'High Pass', 'Low Pass', 'Depth', GHOST],
