@@ -9,6 +9,7 @@ import { ShortcutsModal } from './components/ShortcutsModal'
 import { BackupModal } from './components/BackupModal'
 import { CommunityModal } from './components/CommunityModal'
 import { SupportModal } from './components/SupportModal'
+import { DialogModal } from './components/DialogModal'
 import { BLOCKS, DEFAULT_AMP_NAMES, DEFAULT_CAB_NAMES, PROTOCOL } from './protocol/constants'
 import { transport } from './protocol/transport'
 import {
@@ -80,9 +81,11 @@ export default function App() {
   const [isCommunityOpen, setIsCommunityOpen] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [importerTarget, setImporterTarget] = useState(null)
+  const [dialogState, setDialogState] = useState(null)
 
   const blockRefs = useRef({})
   const slotDumpResolvers = useRef({})
+  const dialogResolverRef = useRef(null)
   const currentPresetIdRef = useRef(0)
   const rawPresetRef = useRef(null)
   const lastUiEditTimeRef = useRef(0)
@@ -90,6 +93,47 @@ export default function App() {
   const forceRamSyncRef = useRef(false)
   const modelSyncOnlyRef = useRef(false)
   const knobThrottleRef = useRef({})
+
+  const openDialog = useCallback((config) => {
+    return new Promise((resolve) => {
+      if (dialogResolverRef.current) {
+        dialogResolverRef.current(false)
+      }
+      dialogResolverRef.current = resolve
+      setDialogState(config)
+    })
+  }, [])
+
+  const showAlert = useCallback(
+    ({ title = 'AVISO', message = '', variant = 'warning', confirmLabel = 'ENTENDI' }) =>
+      openDialog({ mode: 'alert', title, message, variant, confirmLabel }),
+    [openDialog]
+  )
+
+  const showConfirm = useCallback(
+    ({
+      title = 'CONFIRMAR AÇÃO',
+      message = '',
+      variant = 'warning',
+      confirmLabel = 'CONFIRMAR',
+      cancelLabel = 'CANCELAR',
+    }) => openDialog({ mode: 'confirm', title, message, variant, confirmLabel, cancelLabel }),
+    [openDialog]
+  )
+
+  const handleDialogConfirm = useCallback(() => {
+    const resolve = dialogResolverRef.current
+    dialogResolverRef.current = null
+    setDialogState(null)
+    if (resolve) resolve(true)
+  }, [])
+
+  const handleDialogCancel = useCallback(() => {
+    const resolve = dialogResolverRef.current
+    dialogResolverRef.current = null
+    setDialogState(null)
+    if (resolve) resolve(false)
+  }, [])
 
   useEffect(() => {
     currentPresetIdRef.current = currentPresetId
@@ -207,7 +251,11 @@ export default function App() {
       await transport.connectBLE()
       setTimeout(syncPedalData, 500)
     } catch (err) {
-      alert('Falha ao conectar Bluetooth: ' + err.message)
+      await showAlert({
+        title: 'FALHA NA CONEXÃO BLUETOOTH',
+        message: err.message,
+        variant: 'error',
+      })
     }
   }
 
@@ -217,7 +265,11 @@ export default function App() {
       await transport.connectMIDI()
       setTimeout(syncPedalData, 500)
     } catch (err) {
-      alert('Falha ao conectar via USB MIDI: ' + err.message)
+      await showAlert({
+        title: 'FALHA NA CONEXÃO USB MIDI',
+        message: err.message,
+        variant: 'error',
+      })
     }
   }
 
@@ -398,13 +450,21 @@ export default function App() {
       modelSyncOnlyRef.current = false
       await transport.sendRaw(cmdRamDump())
     } catch (err) {
-      alert('Erro ao sincronizar: ' + err.message)
+      await showAlert({
+        title: 'ERRO AO SINCRONIZAR',
+        message: err.message,
+        variant: 'error',
+      })
     }
   }
 
   const handleSaveToFlash = async () => {
     if (!transport.connected) {
-      alert('Conecte o pedal antes de salvar na memória Flash!')
+      await showAlert({
+        title: 'PEDAL DESCONECTADO',
+        message: 'Conecte o pedal via Bluetooth ou Cabo USB antes de salvar na memória Flash.',
+        variant: 'warning',
+      })
       return
     }
 
@@ -436,7 +496,11 @@ export default function App() {
       setHasModifications(false)
       showStatus(`Preset P${String(targetPresetId + 1).padStart(2, '0')} gravado na Flash com sucesso!`)
     } catch (err) {
-      alert('Erro ao salvar no pedal: ' + err.message)
+      await showAlert({
+        title: 'ERRO AO SALVAR NO PEDAL',
+        message: err.message,
+        variant: 'error',
+      })
     } finally {
       isSavingRef.current = false
       setIsSaving(false)
@@ -851,6 +915,7 @@ export default function App() {
           hasModifications={hasModifications}
           presetNames={presetNames}
           onRenamePreset={handleRenamePreset}
+          onShowAlert={showAlert}
         />
 
         {/* Interactive Audio Signal Chain */}
@@ -963,6 +1028,8 @@ export default function App() {
         onStartFullBackup={handleStartFullBackup}
         onRestoreBackup={handleRestoreBackup}
         presetNames={presetNames}
+        onShowAlert={showAlert}
+        onShowConfirm={showConfirm}
       />
       <CommunityModal
         isOpen={isCommunityOpen}
@@ -973,10 +1040,17 @@ export default function App() {
         initialTarget={importerTarget}
         onStageCapture={handleStageCapture}
         onSaveCapture={handleSaveCapture}
+        onShowConfirm={showConfirm}
       />
       <SupportModal
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
+        onShowAlert={showAlert}
+      />
+      <DialogModal
+        dialog={dialogState}
+        onConfirm={handleDialogConfirm}
+        onCancel={handleDialogCancel}
       />
     </div>
   )

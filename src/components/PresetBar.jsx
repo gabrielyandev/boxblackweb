@@ -16,6 +16,7 @@ export function PresetBar({
   hasModifications = false,
   presetNames = {},
   onRenamePreset,
+  onShowAlert,
 }) {
   const fileInputRef = useRef(null)
   const [isEditingName, setIsEditingName] = useState(false)
@@ -42,7 +43,13 @@ export function PresetBar({
         const json = JSON.parse(event.target.result)
         onImportJson(json)
       } catch (err) {
-        alert('Erro ao carregar arquivo JSON: ' + err.message)
+        if (onShowAlert) {
+          onShowAlert({
+            title: 'ARQUIVO JSON INVÁLIDO',
+            message: 'Erro ao carregar arquivo JSON: ' + err.message,
+            variant: 'error',
+          })
+        }
       }
     }
     reader.readAsText(file)

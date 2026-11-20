@@ -6,6 +6,8 @@ export function BackupModal({
   isConnected,
   onStartFullBackup,
   onRestoreBackup,
+  onShowAlert,
+  onShowConfirm,
 }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -16,7 +18,13 @@ export function BackupModal({
 
   const handleFullBackup = async () => {
     if (!isConnected) {
-      alert('Conecte a BlackBox antes de iniciar o backup.')
+      if (onShowAlert) {
+        await onShowAlert({
+          title: 'PEDAL DESCONECTADO',
+          message: 'Conecte a BlackBox antes de iniciar o backup.',
+          variant: 'warning',
+        })
+      }
       return
     }
 
@@ -31,7 +39,13 @@ export function BackupModal({
       })
       setStatusText('CONCLUÍDO')
     } catch (err) {
-      alert('Falha no backup: ' + err.message)
+      if (onShowAlert) {
+        await onShowAlert({
+          title: 'FALHA NO BACKUP',
+          message: err.message,
+          variant: 'error',
+        })
+      }
       setStatusText('')
     } finally {
       setIsProcessing(false)
@@ -50,7 +64,16 @@ export function BackupModal({
           throw new Error('Arquivo inválido.')
         }
 
-        if (confirm(`Restaurar ${(json.presets || json).length} presets na Flash?`)) {
+        const confirmed = onShowConfirm
+          ? await onShowConfirm({
+              title: 'RESTAURAR BACKUP NA FLASH',
+              message: `Deseja restaurar ${(json.presets || json).length} presets permanentemente na memória Flash do pedal?`,
+              confirmLabel: 'RESTAURAR PRESETS',
+              variant: 'warning',
+            })
+          : false
+
+        if (confirmed) {
           setIsProcessing(true)
           setStatusText('GRAVANDO...')
           await onRestoreBackup(json, (curr, total) => {
@@ -60,7 +83,13 @@ export function BackupModal({
           onClose()
         }
       } catch (err) {
-        alert('Erro ao carregar backup: ' + err.message)
+        if (onShowAlert) {
+          await onShowAlert({
+            title: 'ERRO AO CARREGAR BACKUP',
+            message: err.message,
+            variant: 'error',
+          })
+        }
       } finally {
         setIsProcessing(false)
         setProgress(0)

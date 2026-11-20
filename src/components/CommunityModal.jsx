@@ -106,6 +106,7 @@ export function CommunityModal({
   initialTarget = null, // { tab?: 'import' | 'explore' | 'slots', kind?: 'amp' | 'cab', slot?: number }
   onStageCapture,
   onSaveCapture,
+  onShowConfirm,
 }) {
   const [activeTab, setActiveTab] = useState('import')
   const [searchQuery, setSearchQuery] = useState('')
@@ -248,11 +249,15 @@ export function CommunityModal({
   const handleSaveSlot = async () => {
     if (!isConnected || !rawBuffer || !parsedFile?.ok || !onSaveCapture) return
     const slotNumStr = String(targetSlot + 1).padStart(2, '0')
-    if (
-      !confirm(
-        `Sobrescrever permanentemente o slot ${parsedFile.kind.toUpperCase()} #${slotNumStr} com "${sanitizeSlotName(slotName)}"?`
-      )
-    ) {
+    const confirmed = onShowConfirm
+      ? await onShowConfirm({
+          title: 'GRAVAR CAPTURA NA FLASH',
+          message: `Sobrescrever permanentemente o slot ${parsedFile.kind.toUpperCase()} #${slotNumStr} com "${sanitizeSlotName(slotName)}"?`,
+          confirmLabel: 'GRAVAR NO SLOT',
+          variant: 'warning',
+        })
+      : false
+    if (!confirmed) {
       return
     }
 

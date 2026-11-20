@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export function SupportModal({ isOpen, onClose }) {
+export function SupportModal({ isOpen, onClose, onShowAlert }) {
   const [copiedPix, setCopiedPix] = useState(false)
 
   if (!isOpen) return null
@@ -13,7 +13,30 @@ export function SupportModal({ isOpen, onClose }) {
       setCopiedPix(true)
       setTimeout(() => setCopiedPix(false), 2500)
     } catch {
-      alert(`Chave Pix: ${pixKey}`)
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = pixKey
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        const ok = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        if (ok) {
+          setCopiedPix(true)
+          setTimeout(() => setCopiedPix(false), 2500)
+          return
+        }
+      } catch {}
+
+      if (onShowAlert) {
+        onShowAlert({
+          title: 'CHAVE PIX',
+          message: `Copie a chave Pix manualmente: ${pixKey}`,
+          variant: 'info',
+        })
+      }
     }
   }
 
