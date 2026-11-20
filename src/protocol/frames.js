@@ -304,6 +304,10 @@ export function parseStringTable(bytes, defaultNames = []) {
       if (b >= 32 && b <= 126) s += String.fromCharCode(b)
     }
     s = s.trim()
+    const prefix = String(i + 1)
+    if (s.startsWith(prefix)) {
+      s = s.slice(prefix.length).trim()
+    }
     if (s.length > 0) {
       result.push(`${i + 1} ${s}`)
     } else if (defaultNames[i]) {

@@ -164,7 +164,7 @@ export function BlockCard({
               label={name}
               value={val}
               color={block.color}
-              disabled={!isEnabled}
+              disabled={false}
               onChange={(newVal) => onKnobChange(slotIdx, newVal)}
             />
           )

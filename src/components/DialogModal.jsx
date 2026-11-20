@@ -94,3 +94,4 @@ export function DialogModal({ dialog, onConfirm, onCancel }) {
     </div>
   )
 }
+

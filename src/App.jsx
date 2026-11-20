@@ -87,11 +87,13 @@ export default function App() {
   const slotDumpResolvers = useRef({})
   const dialogResolverRef = useRef(null)
   const currentPresetIdRef = useRef(0)
+  const masterVolumeRef = useRef(85)
+  const routingRef = useRef([0, 1, 5, 2, 3, 4])
+  const blocksStateRef = useRef(INITIAL_BLOCKS_STATE)
   const rawPresetRef = useRef(null)
   const lastUiEditTimeRef = useRef(0)
   const isSavingRef = useRef(false)
   const forceRamSyncRef = useRef(false)
-  const modelSyncOnlyRef = useRef(false)
   const knobThrottleRef = useRef({})
 
   const openDialog = useCallback((config) => {
@@ -139,6 +141,18 @@ export default function App() {
     currentPresetIdRef.current = currentPresetId
   }, [currentPresetId])
 
+  useEffect(() => {
+    masterVolumeRef.current = masterVolume
+  }, [masterVolume])
+
+  useEffect(() => {
+    routingRef.current = routing
+  }, [routing])
+
+  useEffect(() => {
+    blocksStateRef.current = blocksState
+  }, [blocksState])
+
   const showStatus = (msg) => {
     setStatusMessage(msg)
   }
@@ -166,7 +180,6 @@ export default function App() {
           setTimeout(() => {
             if (transport.connected && !isSavingRef.current) {
               forceRamSyncRef.current = true
-              modelSyncOnlyRef.current = false
               transport.sendRaw(cmdRamDump()).catch(() => {})
             }
           }, 200)
@@ -180,17 +193,16 @@ export default function App() {
         if (parsed.rawPreset) {
           rawPresetRef.current = new Uint8Array(parsed.rawPreset)
         }
+        masterVolumeRef.current = parsed.preset.masterVolume
+        routingRef.current = parsed.preset.routing
+        blocksStateRef.current = parsed.preset.blocks
         setMasterVolume(parsed.preset.masterVolume)
         setRouting(parsed.preset.routing)
         setBlocksState(parsed.preset.blocks)
-        if (modelSyncOnlyRef.current) {
-          modelSyncOnlyRef.current = false
-        } else {
-          setOriginalPreset(JSON.parse(JSON.stringify(parsed.preset)))
-          setIsCompareActive(false)
-          setHasModifications(false)
-          showStatus(`P${String(currentPresetIdRef.current + 1).padStart(2, '0')} sincronizado com sucesso`)
-        }
+        setOriginalPreset(JSON.parse(JSON.stringify(parsed.preset)))
+        setIsCompareActive(false)
+        setHasModifications(false)
+        showStatus(`P${String(currentPresetIdRef.current + 1).padStart(2, '0')} sincronizado com sucesso`)
       } else if (parsed.type === 'AMP_NAMES' && parsed.names) {
         setAmpNames(parsed.names)
         showStatus('Perfis NAM da pedaleira carregados!')
@@ -234,7 +246,6 @@ export default function App() {
       await transport.sendRaw(cmdPresetSync())
       await new Promise((r) => setTimeout(r, 220))
       forceRamSyncRef.current = true
-      modelSyncOnlyRef.current = false
       await transport.sendRaw(cmdRamDump())
       await new Promise((r) => setTimeout(r, 350))
       await transport.sendRaw(cmdReadAmpNames())
@@ -305,11 +316,15 @@ export default function App() {
     if (!block) return
 
     lastUiEditTimeRef.current = Date.now()
-    const newEnabled = !blocksState[blockKey].enabled
-    setBlocksState((prev) => ({
-      ...prev,
-      [blockKey]: { ...prev[blockKey], enabled: newEnabled },
-    }))
+    const prevBlock = blocksStateRef.current[blockKey]
+    if (!prevBlock) return
+    const newEnabled = !prevBlock.enabled
+    const nextBlocks = {
+      ...blocksStateRef.current,
+      [blockKey]: { ...prevBlock, enabled: newEnabled },
+    }
+    blocksStateRef.current = nextBlocks
+    setBlocksState(nextBlocks)
     setHasModifications(true)
 
     if (transport.connected) {
@@ -326,22 +341,29 @@ export default function App() {
     if (!block) return
 
     lastUiEditTimeRef.current = Date.now()
-    setBlocksState((prev) => ({
-      ...prev,
-      [blockKey]: { ...prev[blockKey], modelIndex },
-    }))
+    const prevBlock = blocksStateRef.current[blockKey] || {
+      enabled: true,
+      modelIndex: 0,
+      knobs: [50, 50, 50, 50, 50, 50],
+    }
+    const wasDisabled = !prevBlock.enabled
+    const nextBlocks = {
+      ...blocksStateRef.current,
+      [blockKey]: { ...prevBlock, enabled: true, modelIndex },
+    }
+    blocksStateRef.current = nextBlocks
+    setBlocksState(nextBlocks)
     setHasModifications(true)
 
     if (transport.connected) {
       try {
+        if (wasDisabled) {
+          await transport.sendRaw(cmdWriteToggle(block.toggleAddr, true))
+        }
         await transport.sendRaw(cmdWriteModel(block.modelAddr, modelIndex))
-        setTimeout(() => {
-          if (transport.connected && !isSavingRef.current) {
-            forceRamSyncRef.current = true
-            modelSyncOnlyRef.current = true
-            transport.sendRaw(cmdRamDump()).catch(() => {})
-          }
-        }, 180)
+        for (let k = 0; k < 6; k++) {
+          await transport.sendRaw(cmdWriteKnob(block.knobBase + k * 2, prevBlock.knobs?.[k] ?? 0))
+        }
       } catch (err) {
         console.error('Erro ao enviar modelo:', err)
       }
@@ -353,14 +375,16 @@ export default function App() {
     if (!block) return
 
     lastUiEditTimeRef.current = Date.now()
-    setBlocksState((prev) => {
-      const currentKnobs = [...prev[blockKey].knobs]
-      currentKnobs[slotIndex] = value
-      return {
-        ...prev,
-        [blockKey]: { ...prev[blockKey], knobs: currentKnobs },
-      }
-    })
+    const prevBlock = blocksStateRef.current[blockKey]
+    if (!prevBlock) return
+    const nextKnobs = [...prevBlock.knobs]
+    nextKnobs[slotIndex] = value
+    const nextBlocks = {
+      ...blocksStateRef.current,
+      [blockKey]: { ...prevBlock, knobs: nextKnobs },
+    }
+    blocksStateRef.current = nextBlocks
+    setBlocksState(nextBlocks)
     setHasModifications(true)
 
     if (transport.connected) {
@@ -393,6 +417,7 @@ export default function App() {
 
   const handleMasterVolumeChange = async (val) => {
     lastUiEditTimeRef.current = Date.now()
+    masterVolumeRef.current = val
     setMasterVolume(val)
     setHasModifications(true)
     if (transport.connected) {
@@ -405,11 +430,13 @@ export default function App() {
   }
 
   const handleMoveBlock = async (fromIndex, toIndex) => {
-    if (toIndex < 0 || toIndex >= routing.length) return
+    const currentRouting = routingRef.current
+    if (toIndex < 0 || toIndex >= currentRouting.length) return
     lastUiEditTimeRef.current = Date.now()
-    const newRouting = [...routing]
+    const newRouting = [...currentRouting]
     const [moved] = newRouting.splice(fromIndex, 1)
     newRouting.splice(toIndex, 0, moved)
+    routingRef.current = newRouting
     setRouting(newRouting)
     setHasModifications(true)
 
@@ -433,7 +460,6 @@ export default function App() {
         setTimeout(() => {
           if (transport.connected && !isSavingRef.current) {
             forceRamSyncRef.current = true
-            modelSyncOnlyRef.current = false
             transport.sendRaw(cmdRamDump()).catch(() => {})
           }
         }, 450)
@@ -447,7 +473,6 @@ export default function App() {
     if (!transport.connected) return
     try {
       forceRamSyncRef.current = true
-      modelSyncOnlyRef.current = false
       await transport.sendRaw(cmdRamDump())
     } catch (err) {
       await showAlert({
@@ -457,6 +482,30 @@ export default function App() {
       })
     }
   }
+
+  const readFlashSlot = (slot, timeoutMs = 1200) =>
+    new Promise((resolve) => {
+      let timerId = null
+      const handler = (rawBytes) => {
+        if (timerId) clearTimeout(timerId)
+        delete slotDumpResolvers.current[slot]
+        resolve(rawBytes ? new Uint8Array(rawBytes) : null)
+      }
+      timerId = setTimeout(() => {
+        if (slotDumpResolvers.current[slot] === handler) {
+          delete slotDumpResolvers.current[slot]
+          resolve(null)
+        }
+      }, timeoutMs)
+      slotDumpResolvers.current[slot] = handler
+      transport.sendRaw(cmdReadPreset(slot)).catch(() => {
+        if (timerId) clearTimeout(timerId)
+        if (slotDumpResolvers.current[slot] === handler) {
+          delete slotDumpResolvers.current[slot]
+        }
+        resolve(null)
+      })
+    })
 
   const handleSaveToFlash = async () => {
     if (!transport.connected) {
@@ -476,9 +525,9 @@ export default function App() {
     try {
       await flushPendingKnobWrites()
       const snapshot = {
-        masterVolume,
-        routing,
-        blocks: blocksState,
+        masterVolume: masterVolumeRef.current,
+        routing: [...routingRef.current],
+        blocks: JSON.parse(JSON.stringify(blocksStateRef.current)),
       }
       const serialized = serializePreset(snapshot, rawPresetRef.current)
       rawPresetRef.current = new Uint8Array(serialized)
@@ -490,6 +539,24 @@ export default function App() {
         // Retry once if the first ACK timed out on BLE/USB
         await transport.sendAndWaitAck(frame, 3500)
       }
+
+      const bytesEqual = (a, b) =>
+        Boolean(a && b && a.length === b.length && a.every((v, idx) => v === b[idx]))
+
+      let readBack = await readFlashSlot(targetPresetId, 1200)
+      if (!bytesEqual(readBack, serialized)) {
+        await new Promise((r) => setTimeout(r, 150))
+        await transport.sendAndWaitAck(frame, 3500)
+        readBack = await readFlashSlot(targetPresetId, 1200)
+      }
+      if (readBack && !bytesEqual(readBack, serialized)) {
+        throw new Error('A memória Flash do pedal não confirmou a gravação dos parâmetros.')
+      }
+
+      // Reload saved Flash slot into DSP RAM to refresh physical pedal screen
+      await transport.sendRaw(cmdLoadPreset(targetPresetId))
+      await new Promise((r) => setTimeout(r, 450))
+      lastUiEditTimeRef.current = Date.now()
 
       setOriginalPreset(JSON.parse(JSON.stringify(snapshot)))
       setIsCompareActive(false)
@@ -562,14 +629,17 @@ export default function App() {
 
     lastUiEditTimeRef.current = Date.now()
     const incoming = clipboardBlock.state
-    setBlocksState((prev) => ({
-      ...prev,
+    const prevBlock = blocksStateRef.current[key]
+    const nextBlocks = {
+      ...blocksStateRef.current,
       [key]: {
-        ...prev[key],
+        ...prevBlock,
         modelIndex: incoming.modelIndex,
         knobs: [...incoming.knobs],
       },
-    }))
+    }
+    blocksStateRef.current = nextBlocks
+    setBlocksState(nextBlocks)
     setHasModifications(true)
 
     if (transport.connected) {
@@ -618,14 +688,23 @@ export default function App() {
 
   const handleImportJson = async (json) => {
     lastUiEditTimeRef.current = Date.now()
-    const nextVolume = typeof json.masterVolume === 'number' ? json.masterVolume : masterVolume
-    const nextRouting = Array.isArray(json.routing) && json.routing.length === 6 ? json.routing : routing
-    const nextBlocks = json.blocks || blocksState
+    const nextVolume = typeof json.masterVolume === 'number' ? json.masterVolume : masterVolumeRef.current
+    const nextRouting = Array.isArray(json.routing) && json.routing.length === 6 ? json.routing : routingRef.current
+    const nextBlocks = json.blocks || blocksStateRef.current
 
-    if (typeof json.masterVolume === 'number') setMasterVolume(json.masterVolume)
-    if (Array.isArray(json.routing) && json.routing.length === 6) setRouting(json.routing)
-    if (json.blocks) setBlocksState(json.blocks)
-    if (json.name) handleRenamePreset(currentPresetId, json.name)
+    if (typeof json.masterVolume === 'number') {
+      masterVolumeRef.current = json.masterVolume
+      setMasterVolume(json.masterVolume)
+    }
+    if (Array.isArray(json.routing) && json.routing.length === 6) {
+      routingRef.current = json.routing
+      setRouting(json.routing)
+    }
+    if (json.blocks) {
+      blocksStateRef.current = json.blocks
+      setBlocksState(json.blocks)
+    }
+    if (json.name) handleRenamePreset(currentPresetIdRef.current, json.name)
     setHasModifications(true)
 
     if (transport.connected) {
@@ -649,17 +728,7 @@ export default function App() {
 
     for (let slot = 0; slot < totalSlots; slot++) {
       onProgress(slot + 1, totalSlots)
-      const rawBytes = await new Promise((resolve) => {
-        slotDumpResolvers.current[slot] = resolve
-        transport.sendRaw(cmdReadPreset(slot)).catch(() => resolve(null))
-        // Timeout safeguard
-        setTimeout(() => {
-          if (slotDumpResolvers.current[slot]) {
-            slotDumpResolvers.current[slot](null)
-            delete slotDumpResolvers.current[slot]
-          }
-        }, 1200)
-      })
+      const rawBytes = await readFlashSlot(slot, 1200)
 
       presetsDump.push({
         slot,
