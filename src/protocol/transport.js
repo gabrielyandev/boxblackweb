@@ -234,7 +234,8 @@ export class BlackBoxTransport {
 
       if (this.type === 'ble') {
         if (!this.txChar) throw new Error('Canal BLE TX não inicializado.')
-        const mtuChunk = 240
+        // BlackBox BLE MTU is 200 bytes; keep chunks at 180 to stay safely below MTU
+        const mtuChunk = 180
         for (let offset = 0; offset < rawFrame.length; offset += mtuChunk) {
           const slice = rawFrame.subarray(offset, Math.min(rawFrame.length, offset + mtuChunk))
           try {

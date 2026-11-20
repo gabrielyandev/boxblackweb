@@ -414,13 +414,23 @@ export function CommunityModal({
 
                 {/* Warnings / Raw NAM explanation */}
                 {parsedFile.warnings?.length > 0 && (
-                  <div className="bg-[#060607] border-l-4 border-[#e5a93c] p-3 text-xs text-[#f2efe9] space-y-1">
+                  <div className="bg-[#060607] border-l-4 border-[#e5a93c] p-3 text-xs text-[#f2efe9] space-y-2">
                     {parsedFile.warnings.map((w, i) => (
                       <div key={i}>{w}</div>
                     ))}
                     {parsedFile.kind === 'nam_raw' && parsedFile.info && (
-                      <div className="text-[#9a968e] pt-1 font-mono">
-                        Modelo: {parsedFile.info.modelName} · Arquitetura: {parsedFile.info.architecture} · {parsedFile.info.sampleRate} Hz
+                      <div className="border-t border-[#2a2a30] pt-2 text-[#e5a93c] space-y-1">
+                        <div className="font-bold uppercase tracking-wider">
+                          💡 Como usar este timbre na M-VAVE BlackBox:
+                        </div>
+                        <div className="text-[#c9c5bd] leading-relaxed">
+                          A pedaleira BlackBox não aceita arquivos JSON <code className="text-[#f2efe9]">.nam</code> brutos de computador. O hardware do pedal executa exclusivamente modelos pré-compilados em <span className="text-[#e5a93c] font-bold">.am4</span>, <span className="text-[#e5a93c] font-bold">.am2</span> ou <span className="text-[#e5a93c] font-bold">.am3Data</span>.
+                        </div>
+                        <div className="text-[#9a968e] space-y-1 pt-1">
+                          <div>• Baixe a versão compilada em <strong className="text-[#f2efe9]">.am4</strong> ou <strong className="text-[#f2efe9]">.am2</strong> para BlackBox (na comunidade M-VAVE / Tone3000 / ToneHunt).</div>
+                          <div>• Ou converta este <code className="text-[#f2efe9]">.nam</code> no software oficial <strong className="text-[#f2efe9]">M-EFCS / SINCO ANN</strong> (função NAM → AM4DATA).</div>
+                          <div>• Em seguida, selecione o arquivo compilado <strong className="text-[#f2efe9]">.am4 / .am2 / .am4Data</strong> aqui para enviar ao slot!</div>
+                        </div>
                       </div>
                     )}
                   </div>

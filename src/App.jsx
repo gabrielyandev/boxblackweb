@@ -546,8 +546,12 @@ export default function App() {
         })
       }
 
-      // Allow SPI NOR Flash page programming (~100-300ms) to finish without immediate read/load bursts
-      await new Promise((r) => setTimeout(r, 300))
+      // Allow SPI NOR Flash page programming (~100-300ms) to settle
+      await new Promise((r) => setTimeout(r, 350))
+
+      // Reload saved Flash slot into DSP RAM to refresh physical pedal screen and DSP audio
+      await transport.sendRaw(cmdLoadPreset(targetPresetId))
+      await new Promise((r) => setTimeout(r, 200))
       lastUiEditTimeRef.current = Date.now()
 
       setOriginalPreset(JSON.parse(JSON.stringify(snapshot)))
@@ -851,12 +855,20 @@ export default function App() {
 
       for (let i = 0; i < stageFrames.length; i++) {
         if (onProgress) onProgress(i + 1, total)
-        await transport.sendAndWaitAck(stageFrames[i], 3500)
+        try {
+          await transport.sendAndWaitAck(stageFrames[i], 3500)
+        } catch (err) {
+          if (i === stageFrames.length - 1) throw err
+        }
       }
       await new Promise((r) => setTimeout(r, 400))
       for (let i = 0; i < saveFrames.length; i++) {
         if (onProgress) onProgress(stageFrames.length + i + 1, total)
-        await transport.sendAndWaitAck(saveFrames[i], 4000)
+        try {
+          await transport.sendAndWaitAck(saveFrames[i], 4000)
+        } catch (err) {
+          if (i === saveFrames.length - 1) throw err
+        }
       }
       await new Promise((r) => setTimeout(r, 300))
       await transport.sendRaw(cmdReadCabNames())

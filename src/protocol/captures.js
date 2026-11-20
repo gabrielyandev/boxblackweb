@@ -442,6 +442,30 @@ export function inspectCaptureFile(fileName, arrayBuffer) {
       bytes[AM4_RECORD_LEN] === 0x4c &&
       bytes[AM4_RECORD_LEN + 1] === 0x4d &&
       bytes[AM4_RECORD_LEN + 2] === 0x54
+  } else if (size >= AM4_RECORD_LEN && (lower.endsWith('.am4') || lower.endsWith('.am4data') || (bytes[0] === 0x41 && bytes[1] === 0x4d && bytes[2] === 0x34))) {
+    format = 'AM4'
+    hasHeader = true
+    payloadOffset = HEADER_LEN
+    payloadFloats = 1952
+    hasLmt = size >= AM4_DEVICE_LEN &&
+      bytes[AM4_RECORD_LEN] === 0x4c &&
+      bytes[AM4_RECORD_LEN + 1] === 0x4d &&
+      bytes[AM4_RECORD_LEN + 2] === 0x54
+    if (size !== AM4_RECORD_LEN && size !== AM4_DEVICE_LEN) {
+      warnings.push(`Arquivo AM4 com ${size} bytes normalizado para ${hasLmt ? AM4_DEVICE_LEN : AM4_RECORD_LEN} bytes.`)
+    }
+  } else if (size >= AM2_RECORD_LEN && (lower.endsWith('.am2data') || lower.endsWith('.am3data') || (bytes[0] === 0x41 && bytes[1] === 0x4d))) {
+    format = 'AM2'
+    hasHeader = true
+    payloadOffset = HEADER_LEN
+    payloadFloats = 1536
+    hasLmt = size >= AM2_DEVICE_LEN &&
+      bytes[AM2_RECORD_LEN] === 0x4c &&
+      bytes[AM2_RECORD_LEN + 1] === 0x4d &&
+      bytes[AM2_RECORD_LEN + 2] === 0x54
+    if (size !== AM2_RECORD_LEN && size !== AM2_DEVICE_LEN) {
+      warnings.push(`Arquivo AM2/AM3 com ${size} bytes normalizado para ${hasLmt ? AM2_DEVICE_LEN : AM2_RECORD_LEN} bytes.`)
+    }
   } else {
     return {
       kind: 'unknown',
@@ -536,7 +560,13 @@ export function buildAmpRecord(arrayBuffer, slotName, options = {}) {
   const bytes = new Uint8Array(arrayBuffer)
   const size = bytes.length
 
-  const isAm4 = size === AM4_PAYLOAD_LEN || size === AM4_RECORD_LEN || size === AM4_DEVICE_LEN
+  const isAm4 =
+    size === AM4_PAYLOAD_LEN ||
+    size === AM4_RECORD_LEN ||
+    size === AM4_DEVICE_LEN ||
+    (size >= AM4_RECORD_LEN &&
+      ((bytes[0] === 0x41 && bytes[1] === 0x4d && bytes[2] === 0x34) ||
+        (size >= AM4_DEVICE_LEN && bytes[AM4_RECORD_LEN] === 0x4c && bytes[AM4_RECORD_LEN + 1] === 0x4d)))
   const baseRecordLen = isAm4 ? AM4_RECORD_LEN : AM2_RECORD_LEN
   const deviceRecordLen = isAm4 ? AM4_DEVICE_LEN : AM2_DEVICE_LEN
   const payloadLen = isAm4 ? AM4_PAYLOAD_LEN : AM2_PAYLOAD_LEN
