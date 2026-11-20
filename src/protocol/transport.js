@@ -29,6 +29,23 @@ export class BlackBoxTransport {
     this.ackResolvers = []
     this.writeQueue = Promise.resolve()
     this.lastRxTime = 0
+
+    this._onRxChanged = (event) => {
+      const val = new Uint8Array(event.target.value.buffer)
+      this.handleIncomingRaw(val)
+    }
+
+    if (typeof window !== 'undefined') {
+      const releaseBleOnUnload = () => {
+        if (this.rxChar && typeof this.rxChar.stopNotifications === 'function') {
+          try {
+            this.rxChar.stopNotifications().catch(() => {})
+          } catch {}
+        }
+      }
+      window.addEventListener('beforeunload', releaseBleOnUnload)
+      window.addEventListener('pagehide', releaseBleOnUnload)
+    }
   }
 
   notifyStatus(status) {
@@ -82,11 +99,25 @@ export class BlackBoxTransport {
       this.txChar = await service.getCharacteristic(BLE_CONFIG.txUuid)
       this.rxChar = await service.getCharacteristic(BLE_CONFIG.rxUuid)
 
-      await this.rxChar.startNotifications()
-      this.rxChar.addEventListener('characteristicvaluechanged', (event) => {
-        const val = new Uint8Array(event.target.value.buffer)
-        this.handleIncomingRaw(val)
-      })
+      this.rxChar.removeEventListener('characteristicvaluechanged', this._onRxChanged)
+      this.rxChar.addEventListener('characteristicvaluechanged', this._onRxChanged)
+
+      try {
+        await this.rxChar.startNotifications()
+      } catch (err) {
+        try {
+          await this.rxChar.stopNotifications().catch(() => {})
+          await new Promise((r) => setTimeout(r, 80))
+          await this.rxChar.startNotifications()
+        } catch (retryErr) {
+          const msg = `${err?.message || err} ${retryErr?.message || retryErr}`
+          if (/already\s*notifying/i.test(msg)) {
+            console.warn('Sessão de notificação BLE já ativa no BlueZ; reutilizando canal.', msg)
+          } else {
+            throw retryErr
+          }
+        }
+      }
 
       this.type = 'ble'
       this.connected = true
@@ -225,6 +256,8 @@ export class BlackBoxTransport {
             await new Promise(resolve => setTimeout(resolve, 15))
           }
         }
+        // Pace queued BLE writes so the pedal's single-packet RX buffer isn't overrun
+        await new Promise(resolve => setTimeout(resolve, 30))
       } else if (this.type === 'midi') {
         if (!this.midiOutput) throw new Error('Canal MIDI Out não inicializado.')
         const wrapped = sysexWrap(rawFrame)
@@ -417,6 +450,12 @@ export class BlackBoxTransport {
   }
 
   cleanup() {
+    if (this.rxChar) {
+      try {
+        this.rxChar.removeEventListener('characteristicvaluechanged', this._onRxChanged)
+        this.rxChar.stopNotifications().catch(() => {})
+      } catch {}
+    }
     if (this.bleDevice && this.bleDevice.gatt && this.bleDevice.gatt.connected) {
       this.bleDevice.gatt.disconnect()
     }

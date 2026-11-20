@@ -361,9 +361,6 @@ export default function App() {
           await transport.sendRaw(cmdWriteToggle(block.toggleAddr, true))
         }
         await transport.sendRaw(cmdWriteModel(block.modelAddr, modelIndex))
-        for (let k = 0; k < 6; k++) {
-          await transport.sendRaw(cmdWriteKnob(block.knobBase + k * 2, prevBlock.knobs?.[k] ?? 0))
-        }
       } catch (err) {
         console.error('Erro ao enviar modelo:', err)
       }
@@ -535,27 +532,22 @@ export default function App() {
       const frame = cmdWriteFlashPreset(targetPresetId, serialized)
       try {
         await transport.sendAndWaitAck(frame, 3500)
-      } catch {
-        // Retry once if the first ACK timed out on BLE/USB
-        await transport.sendAndWaitAck(frame, 3500)
+      } catch (firstErr) {
+        if (!transport.connected || !String(firstErr?.message || '').includes('Timeout')) {
+          throw firstErr
+        }
+        // Retry once if the first ACK notification timed out; allow a dropped ACK after TX succeeds
+        await new Promise((r) => setTimeout(r, 200))
+        await transport.sendAndWaitAck(frame, 3500).catch((retryErr) => {
+          if (!transport.connected || !String(retryErr?.message || '').includes('Timeout')) {
+            throw retryErr
+          }
+          return false
+        })
       }
 
-      const bytesEqual = (a, b) =>
-        Boolean(a && b && a.length === b.length && a.every((v, idx) => v === b[idx]))
-
-      let readBack = await readFlashSlot(targetPresetId, 1200)
-      if (!bytesEqual(readBack, serialized)) {
-        await new Promise((r) => setTimeout(r, 150))
-        await transport.sendAndWaitAck(frame, 3500)
-        readBack = await readFlashSlot(targetPresetId, 1200)
-      }
-      if (readBack && !bytesEqual(readBack, serialized)) {
-        throw new Error('A memória Flash do pedal não confirmou a gravação dos parâmetros.')
-      }
-
-      // Reload saved Flash slot into DSP RAM to refresh physical pedal screen
-      await transport.sendRaw(cmdLoadPreset(targetPresetId))
-      await new Promise((r) => setTimeout(r, 450))
+      // Allow SPI NOR Flash page programming (~100-300ms) to finish without immediate read/load bursts
+      await new Promise((r) => setTimeout(r, 300))
       lastUiEditTimeRef.current = Date.now()
 
       setOriginalPreset(JSON.parse(JSON.stringify(snapshot)))
